@@ -593,6 +593,47 @@ class App {
       if (e.key === 'Enter') triggerSearch();
     });
 
+    // Voice Search Button (Desktop & Mobile)
+    const voiceSearchBtn = document.getElementById('voiceSearchBtn');
+    if (voiceSearchBtn) {
+      voiceSearchBtn.addEventListener('click', () => {
+        const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRec) {
+          this.showToast('Voice search not supported in this browser');
+          return;
+        }
+        try {
+          const recognition = new SpeechRec();
+          recognition.lang = 'en-US';
+          recognition.interimResults = false;
+          recognition.maxAlternatives = 1;
+
+          voiceSearchBtn.style.color = '#ff0000';
+          this.showToast('Listening... Speak now');
+
+          recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            if (transcript) {
+              this.searchInput.value = transcript;
+              this.searchClearBtn.classList.remove('hidden');
+              triggerSearch();
+            }
+          };
+          recognition.onerror = () => {
+            voiceSearchBtn.style.color = '';
+            this.showToast('Could not recognize speech');
+          };
+          recognition.onend = () => {
+            voiceSearchBtn.style.color = '';
+          };
+          recognition.start();
+        } catch (err) {
+          voiceSearchBtn.style.color = '';
+          console.warn('Speech rec error:', err);
+        }
+      });
+    }
+
     // Quick Paste URL button
     this.pasteUrlBtn.addEventListener('click', async () => {
       try {
