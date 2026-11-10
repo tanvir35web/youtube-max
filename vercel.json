@@ -12,6 +12,10 @@
     {
       "source": "/api/stream",
       "destination": "/api/stream.js"
+    },
+    {
+      "source": "/api/download",
+      "destination": "/api/download.js"
     }
   ],
   "headers": [

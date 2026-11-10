@@ -463,13 +463,19 @@ class YouTubePlayer {
     window.updateMiniPlayerState(true);
   }
 
-  activateAudioMode(startPos = 0) {
+  activateAudioMode(startPos = 0, customSrc = null) {
     this.isAudioMode = true;
     this.wasAutoSwitched = false;
 
-    // Stop iframe
+    // Stop iframe and any local video element
     this.sendCommand('pauseVideo');
     this.iframe.classList.add('hidden');
+    const mainVideo = document.getElementById('mainVideo');
+    if (mainVideo) {
+      mainVideo.pause();
+      mainVideo.classList.add('hidden');
+    }
+
     this.audioModeScreen.classList.remove('hidden');
     if (this.playerContainer) this.playerContainer.classList.add('audio-active');
 
@@ -480,8 +486,8 @@ class YouTubePlayer {
       this.audioModeText.textContent = 'Video Mode';
     }
 
-    const streamUrl = `/api/stream?id=${encodeURIComponent(this.currentVideoData.videoId)}`;
-    if (!this.audioEl.src.includes(streamUrl)) {
+    const streamUrl = customSrc || `/api/stream?id=${encodeURIComponent(this.currentVideoData.videoId)}`;
+    if (this.audioEl.src !== streamUrl && !this.audioEl.src.includes(streamUrl)) {
       this.audioEl.src = streamUrl;
     }
 
@@ -492,15 +498,22 @@ class YouTubePlayer {
 
     this.updatePlayStateUI(true);
     this.updateMediaSessionMetadata();
-    window.showToast('🎧 Audio Mode Active (Screen-Off Ready)');
+    if (!customSrc) {
+      window.showToast('🎧 Audio Mode Active (Screen-Off Ready)');
+    }
   }
 
   activateVideoMode() {
     this.isAudioMode = false;
     this.wasAutoSwitched = false;
 
-    // Pause native audio
+    // Pause native audio and native video
     this.audioEl.pause();
+    const mainVideo = document.getElementById('mainVideo');
+    if (mainVideo) {
+      mainVideo.pause();
+      mainVideo.classList.add('hidden');
+    }
 
     this.audioModeScreen.classList.add('hidden');
     this.iframe.classList.remove('hidden');
@@ -522,6 +535,56 @@ class YouTubePlayer {
     this.iframe.src = embedUrl;
 
     this.updatePlayStateUI(true);
+  }
+
+  /**
+   * Play media directly from local offline storage (Zero Internet)
+   */
+  playOfflineMedia(downloadItem) {
+    this.currentVideoData = downloadItem;
+    this.isPlaying = true;
+    this.currentPosition = 0;
+    this._transitionTriggered = false;
+
+    if (this._currentBlobUrl) {
+      try { URL.revokeObjectURL(this._currentBlobUrl); } catch (e) {}
+    }
+    const blobUrl = URL.createObjectURL(downloadItem.blob);
+    this._currentBlobUrl = blobUrl;
+
+    this.updateMediaSessionMetadata();
+
+    const mainVideo = document.getElementById('mainVideo');
+
+    if (downloadItem.type === 'video') {
+      // Offline Video Playback
+      this.isAudioMode = false;
+      this.iframe.classList.add('hidden');
+      this.iframe.src = '';
+      this.audioModeScreen.classList.add('hidden');
+      if (this.playerContainer) this.playerContainer.classList.remove('audio-active');
+
+      if (mainVideo) {
+        mainVideo.src = blobUrl;
+        mainVideo.classList.remove('hidden');
+        mainVideo.controls = true;
+        mainVideo.play().catch(e => console.warn(e));
+      }
+      this.audioEl.pause();
+    } else {
+      // Offline Audio Playback
+      if (mainVideo) {
+        mainVideo.pause();
+        mainVideo.classList.add('hidden');
+      }
+      if (this.audioModeThumb && downloadItem.thumbnail) {
+        this.audioModeThumb.src = downloadItem.thumbnail;
+      }
+      this.activateAudioMode(0, blobUrl);
+    }
+
+    window.updateMiniPlayerState(true);
+    window.showToast('📶 Playing from Offline Storage (Zero Internet)');
   }
 
   toggleAudioMode() {

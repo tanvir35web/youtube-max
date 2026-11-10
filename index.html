@@ -44,7 +44,7 @@
   </script>
 
   <!-- Cache-Busted Stylesheet to guarantee fresh load on iPhone -->
-  <link rel="stylesheet" href="/style.css?v=8.1">
+  <link rel="stylesheet" href="/style.css?v=8.2">
 </head>
 <body>
   <!-- Safe Area Wrapper for iPhone Notch & Home Indicator -->
@@ -314,6 +314,14 @@
               <span id="saveLibraryText">Save</span>
             </button>
 
+            <!-- Download Button (Offline Storage) -->
+            <button id="downloadBtn" class="action-pill download-pill" title="Download for Offline Play">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
+              </svg>
+              <span id="downloadBtnText">Download</span>
+            </button>
+
             <button id="copyUrlBtn" class="action-pill">
               <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
                 <path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/>
@@ -386,6 +394,17 @@
         </div>
       </div>
       
+      <!-- Offline Downloads Section -->
+      <div class="library-section">
+        <div class="section-title-row">
+          <h3>⬇️ Offline Downloads (অফলাইন প্লেব্যাক)</h3>
+          <span id="offlineBadgeCount" class="badge-count">0 items</span>
+        </div>
+        <div id="downloadsList" class="library-list">
+          <p class="empty-text">No offline videos yet. Tap "Download" on any video to play without internet!</p>
+        </div>
+      </div>
+
       <div class="library-section">
         <h3>Saved Videos</h3>
         <div id="savedVideosList" class="library-list">
@@ -548,13 +567,82 @@
       </div>
     </div>
 
+    <!-- Download Options & Progress Modal -->
+    <div id="downloadModal" class="modal-overlay hidden">
+      <div class="modal-box download-modal-box">
+        <div class="modal-header">
+          <h3>Download for Offline Play</h3>
+          <button id="closeDownloadBtn" class="icon-btn">✕</button>
+        </div>
+
+        <div class="modal-content download-modal-content">
+          <div class="download-preview-card">
+            <img id="downloadPreviewThumb" src="" alt="Thumbnail" class="download-preview-thumb">
+            <div class="download-preview-meta">
+              <h4 id="downloadPreviewTitle" class="download-preview-title">Video Title</h4>
+              <p id="downloadPreviewAuthor" class="download-preview-author">Channel</p>
+            </div>
+          </div>
+
+          <!-- Options List (Audio / Video) -->
+          <div id="downloadOptionsContainer" class="download-options-list">
+            <!-- Audio Option -->
+            <button id="startDownloadAudioBtn" class="download-option-card">
+              <div class="dl-opt-icon">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="#3ea6ff">
+                  <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                </svg>
+              </div>
+              <div class="dl-opt-text">
+                <div class="dl-opt-title-row">
+                  <span class="dl-opt-title">Audio Only (M4A / MP3)</span>
+                  <span class="badge-opt">Recommended</span>
+                </div>
+                <p class="dl-opt-desc">Highest Quality • Screen-Off Background Play • Fast Download (~3-5 MB)</p>
+              </div>
+              <div class="dl-opt-arrow">⬇️</div>
+            </button>
+
+            <!-- Video Option -->
+            <button id="startDownloadVideoBtn" class="download-option-card">
+              <div class="dl-opt-icon">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="#ff4e45">
+                  <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+                </svg>
+              </div>
+              <div class="dl-opt-text">
+                <div class="dl-opt-title-row">
+                  <span class="dl-opt-title">Full Video (MP4)</span>
+                  <span class="badge-opt-video">Video</span>
+                </div>
+                <p class="dl-opt-desc">Watch complete video with sound offline anywhere without internet</p>
+              </div>
+              <div class="dl-opt-arrow">⬇️</div>
+            </button>
+          </div>
+
+          <!-- Live Progress Container (Visible during download) -->
+          <div id="downloadProgressBox" class="download-progress-box hidden">
+            <div class="dl-status-row">
+              <span id="dlStatusText" class="dl-status-text">Downloading locally...</span>
+              <span id="dlPercentText" class="dl-percent-text">0%</span>
+            </div>
+            <div class="progress-bar-track">
+              <div id="dlProgressBar" class="progress-bar-fill" style="width: 0%"></div>
+            </div>
+            <p class="dl-note">Saving directly into your offline library and device storage...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Toast Notification -->
     <div id="toast" class="toast hidden">Message</div>
 
   </div>
 
-  <script src="/player.js?v=8.1"></script>
-  <script src="/app.js?v=8.1"></script>
+  <script src="/player.js?v=8.2"></script>
+  <script src="/app.js?v=8.2"></script>
   <script>
     // Register & Force Update PWA Service Worker
     if ('serviceWorker' in navigator) {

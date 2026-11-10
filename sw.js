@@ -1,7 +1,25 @@
-const CACHE_NAME = 'yt-max-v8-1';
+const CACHE_NAME = 'yt-max-v8-2';
+const APP_SHELL_FILES = [
+  '/',
+  '/index.html',
+  '/style.css?v=8.2',
+  '/app.js?v=8.2',
+  '/player.js?v=8.2',
+  '/manifest.json',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
+  '/icons/apple-touch-icon.png'
+];
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(APP_SHELL_FILES).catch((err) => {
+        console.warn('Pre-cache warning:', err);
+      });
+    })
+  );
 });
 
 self.addEventListener('activate', (event) => {
@@ -24,9 +42,10 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Pass-through for video/audio media streaming
+  // Pass-through for video/audio streaming and local file downloads
   if (
     url.pathname.startsWith('/api/stream') ||
+    url.pathname.startsWith('/api/download') ||
     url.hostname.includes('googlevideo') ||
     url.hostname.includes('youtube') ||
     event.request.destination === 'video' ||
@@ -45,7 +64,13 @@ self.addEventListener('fetch', (event) => {
         return fresh;
       })
       .catch(() => {
-        return caches.match(event.request);
+        return caches.match(event.request).then((cached) => {
+          if (cached) return cached;
+          if (event.request.mode === 'navigate') {
+            return caches.match('/index.html') || caches.match('/');
+          }
+          return null;
+        });
       })
   );
 });

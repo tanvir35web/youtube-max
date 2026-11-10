@@ -3,6 +3,77 @@
  * Integrates with YouTube InnerTube Backend API for 100% Reliable Loading
  */
 
+class OfflineDB {
+  constructor() {
+    this.db = null;
+    this.dbName = 'YouTubeMaxOfflineDB';
+    this.version = 1;
+  }
+
+  async init() {
+    if (this.db) return this.db;
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(this.dbName, this.version);
+      req.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains('downloads')) {
+          const store = db.createObjectStore('downloads', { keyPath: 'videoId' });
+          store.createIndex('downloadedAt', 'downloadedAt', { unique: false });
+        }
+      };
+      req.onsuccess = (e) => {
+        this.db = e.target.result;
+        resolve(this.db);
+      };
+      req.onerror = (e) => reject(e);
+    });
+  }
+
+  async save(item) {
+    await this.init();
+    return new Promise((resolve, reject) => {
+      const tx = this.db.transaction('downloads', 'readwrite');
+      const store = tx.objectStore('downloads');
+      const req = store.put(item);
+      req.onsuccess = () => resolve(true);
+      req.onerror = (e) => reject(e);
+    });
+  }
+
+  async get(videoId) {
+    await this.init();
+    return new Promise((resolve, reject) => {
+      const tx = this.db.transaction('downloads', 'readonly');
+      const store = tx.objectStore('downloads');
+      const req = store.get(videoId);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = (e) => reject(e);
+    });
+  }
+
+  async getAll() {
+    await this.init();
+    return new Promise((resolve, reject) => {
+      const tx = this.db.transaction('downloads', 'readonly');
+      const store = tx.objectStore('downloads');
+      const req = store.getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = (e) => reject(e);
+    });
+  }
+
+  async delete(videoId) {
+    await this.init();
+    return new Promise((resolve, reject) => {
+      const tx = this.db.transaction('downloads', 'readwrite');
+      const store = tx.objectStore('downloads');
+      const req = store.delete(videoId);
+      req.onsuccess = () => resolve(true);
+      req.onerror = (e) => reject(e);
+    });
+  }
+}
+
 class App {
   constructor() {
     this.player = null;
@@ -11,11 +82,14 @@ class App {
     this.savedVideos = JSON.parse(localStorage.getItem('ytmax_saved') || '[]');
     this.historyVideos = JSON.parse(localStorage.getItem('ytmax_history') || '[]');
     this.currentUser = JSON.parse(localStorage.getItem('ytmax_user') || 'null');
+    this.offlineDb = new OfflineDB();
+    this.offlineDownloads = [];
 
     this.initElements();
     this.initPlayer();
     this.initAuth();
     this.initEvents();
+    this.initOfflineDownloads();
     this.loadFeed('trending');
     this.checkStandaloneMode();
   }
@@ -105,6 +179,24 @@ class App {
 
     this.googleClientIdInput = document.getElementById('googleClientIdInput');
     this.saveGoogleClientIdBtn = document.getElementById('saveGoogleClientIdBtn');
+
+    // Offline Download Elements
+    this.downloadBtn = document.getElementById('downloadBtn');
+    this.downloadBtnText = document.getElementById('downloadBtnText');
+    this.downloadModal = document.getElementById('downloadModal');
+    this.closeDownloadBtn = document.getElementById('closeDownloadBtn');
+    this.downloadPreviewThumb = document.getElementById('downloadPreviewThumb');
+    this.downloadPreviewTitle = document.getElementById('downloadPreviewTitle');
+    this.downloadPreviewAuthor = document.getElementById('downloadPreviewAuthor');
+    this.startDownloadAudioBtn = document.getElementById('startDownloadAudioBtn');
+    this.startDownloadVideoBtn = document.getElementById('startDownloadVideoBtn');
+    this.downloadOptionsContainer = document.getElementById('downloadOptionsContainer');
+    this.downloadProgressBox = document.getElementById('downloadProgressBox');
+    this.dlStatusText = document.getElementById('dlStatusText');
+    this.dlPercentText = document.getElementById('dlPercentText');
+    this.dlProgressBar = document.getElementById('dlProgressBar');
+    this.downloadsList = document.getElementById('downloadsList');
+    this.offlineBadgeCount = document.getElementById('offlineBadgeCount');
   }
 
   initPlayer() {
@@ -541,6 +633,38 @@ class App {
       this.toggleSaveVideo(this.player.currentVideoData);
     });
 
+    // Offline Download Button
+    if (this.downloadBtn) {
+      this.downloadBtn.addEventListener('click', async () => {
+        if (!this.player.currentVideoData) return;
+        const vId = this.player.currentVideoData.videoId;
+        const existing = await this.offlineDb.get(vId);
+        if (existing) {
+          window.showToast('Already downloaded offline! Find it in Library.');
+          return;
+        }
+        this.openDownloadModal();
+      });
+    }
+
+    if (this.closeDownloadBtn) {
+      this.closeDownloadBtn.addEventListener('click', () => {
+        this.downloadModal.classList.add('hidden');
+      });
+    }
+
+    if (this.startDownloadAudioBtn) {
+      this.startDownloadAudioBtn.addEventListener('click', () => {
+        this.executeDownload('audio');
+      });
+    }
+
+    if (this.startDownloadVideoBtn) {
+      this.startDownloadVideoBtn.addEventListener('click', () => {
+        this.executeDownload('video');
+      });
+    }
+
     // Share & Copy URL
     this.shareBtn.addEventListener('click', () => {
       if (!this.player.currentVideoData) return;
@@ -741,6 +865,7 @@ class App {
     // Save to history & update button
     this.addToHistory(videoPayload);
     this.updateSaveButtonState(videoId);
+    this.updateDownloadBtnState(videoId);
 
     // Load video in player engine
     this.player.loadVideo(videoPayload);
@@ -837,6 +962,8 @@ class App {
   }
 
   renderLibrary() {
+    this.renderOfflineDownloads();
+
     // Saved Videos
     if (this.savedVideos.length === 0) {
       this.savedVideosList.innerHTML = '<p class="empty-text">No saved videos yet.</p>';
@@ -877,6 +1004,252 @@ class App {
         this.openVideoById(id, title, author, thumb);
       });
     });
+  }
+
+  // --------------------------------------------------------------------------
+  // Offline Downloads Management (IndexedDB & Local File Storage)
+  // --------------------------------------------------------------------------
+  async initOfflineDownloads() {
+    try {
+      await this.offlineDb.init();
+      await this.renderOfflineDownloads();
+    } catch (err) {
+      console.warn('Offline DB init error:', err);
+    }
+  }
+
+  openDownloadModal() {
+    if (!this.player.currentVideoData) return;
+    const v = this.player.currentVideoData;
+
+    if (this.downloadPreviewThumb) this.downloadPreviewThumb.src = v.thumbnail || '';
+    if (this.downloadPreviewTitle) this.downloadPreviewTitle.textContent = v.title || 'YouTube Video';
+    if (this.downloadPreviewAuthor) this.downloadPreviewAuthor.textContent = v.author || 'YouTube Channel';
+
+    if (this.downloadOptionsContainer) this.downloadOptionsContainer.classList.remove('hidden');
+    if (this.downloadProgressBox) this.downloadProgressBox.classList.add('hidden');
+    if (this.downloadModal) this.downloadModal.classList.remove('hidden');
+  }
+
+  async updateDownloadBtnState(videoId) {
+    if (!this.downloadBtnText) return;
+    try {
+      const isDownloaded = await this.offlineDb.get(videoId);
+      if (isDownloaded) {
+        this.downloadBtnText.textContent = 'Downloaded ✓';
+        this.downloadBtn.classList.add('downloaded');
+      } else {
+        this.downloadBtnText.textContent = 'Download';
+        this.downloadBtn.classList.remove('downloaded');
+      }
+    } catch (e) {}
+  }
+
+  async executeDownload(type) {
+    const video = this.player.currentVideoData;
+    if (!video || !video.videoId) return;
+
+    if (this.downloadOptionsContainer) this.downloadOptionsContainer.classList.add('hidden');
+    if (this.downloadProgressBox) this.downloadProgressBox.classList.remove('hidden');
+    if (this.dlStatusText) this.dlStatusText.textContent = `Downloading ${type === 'video' ? 'Video (MP4)' : 'Audio (M4A)'}...`;
+    if (this.dlPercentText) this.dlPercentText.textContent = '0%';
+    if (this.dlProgressBar) this.dlProgressBar.style.width = '0%';
+
+    try {
+      const url = `/api/download?id=${encodeURIComponent(video.videoId)}&type=${type}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Download request failed: HTTP ' + response.status);
+
+      const contentLength = +response.headers.get('Content-Length') || 0;
+      const reader = response.body.getReader();
+      let receivedBytes = 0;
+      const chunks = [];
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        receivedBytes += value.length;
+        if (contentLength > 0) {
+          const percent = Math.min(100, Math.round((receivedBytes / contentLength) * 100));
+          if (this.dlPercentText) this.dlPercentText.textContent = `${percent}%`;
+          if (this.dlProgressBar) this.dlProgressBar.style.width = `${percent}%`;
+        } else {
+          const mb = (receivedBytes / (1024 * 1024)).toFixed(1);
+          if (this.dlPercentText) this.dlPercentText.textContent = `${mb} MB`;
+          if (this.dlProgressBar) this.dlProgressBar.style.width = '75%';
+        }
+      }
+
+      if (this.dlStatusText) this.dlStatusText.textContent = 'Saving locally to device...';
+      if (this.dlProgressBar) this.dlProgressBar.style.width = '100%';
+
+      const mimeType = type === 'video' ? 'video/mp4' : 'audio/mp4';
+      const blob = new Blob(chunks, { type: mimeType });
+
+      // Save to IndexedDB
+      const record = {
+        videoId: video.videoId,
+        title: video.title || 'YouTube Video',
+        author: video.author || 'YouTube',
+        thumbnail: video.thumbnail || `https://i.ytimg.com/vi/${video.videoId}/hqdefault.jpg`,
+        duration: video.duration || '',
+        type: type,
+        blob: blob,
+        size: blob.size,
+        downloadedAt: Date.now()
+      };
+      await this.offlineDb.save(record);
+
+      // Trigger native browser file download so file is stored in phone/PC file system
+      try {
+        const cleanName = (video.title || 'video').replace(/[/\\?%*:|"<>]/g, '_').trim().substring(0, 70);
+        const filename = `${cleanName}.${type === 'video' ? 'mp4' : 'm4a'}`;
+        const downloadLink = document.createElement('a');
+        const blobUrl = URL.createObjectURL(blob);
+        downloadLink.href = blobUrl;
+        downloadLink.download = filename;
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        setTimeout(() => {
+          URL.revokeObjectURL(blobUrl);
+          downloadLink.remove();
+        }, 1500);
+      } catch (dlErr) {
+        console.warn('Native download link error:', dlErr);
+      }
+
+      this.updateDownloadBtnState(video.videoId);
+      await this.renderOfflineDownloads();
+
+      setTimeout(() => {
+        if (this.downloadModal) this.downloadModal.classList.add('hidden');
+        window.showToast(`✓ Downloaded ${type === 'video' ? 'Video' : 'Audio'}! Ready for offline play.`);
+      }, 700);
+    } catch (err) {
+      console.error('Download error:', err);
+      if (this.dlStatusText) this.dlStatusText.textContent = 'Download failed';
+      if (this.downloadOptionsContainer) this.downloadOptionsContainer.classList.remove('hidden');
+      if (this.downloadProgressBox) this.downloadProgressBox.classList.add('hidden');
+      window.showToast('Download failed: ' + err.message);
+    }
+  }
+
+  async renderOfflineDownloads() {
+    if (!this.downloadsList) return;
+    try {
+      const list = await this.offlineDb.getAll();
+      this.offlineDownloads = list;
+      if (this.offlineBadgeCount) {
+        this.offlineBadgeCount.textContent = `${list.length} item${list.length === 1 ? '' : 's'}`;
+      }
+
+      if (list.length === 0) {
+        this.downloadsList.innerHTML = '<p class="empty-text">No offline videos yet. Tap "Download" on any video to play without internet!</p>';
+        return;
+      }
+
+      this.downloadsList.innerHTML = list.map(item => {
+        const sizeMb = (item.size / (1024 * 1024)).toFixed(1);
+        const isVideo = item.type === 'video';
+        return `
+          <div class="download-item-card" data-id="${item.videoId}">
+            <div class="download-item-thumb-wrap">
+              <img src="${item.thumbnail}" alt="${this.escapeHtml(item.title)}" class="download-item-thumb" loading="lazy">
+              <span class="badge-offline-type">${isVideo ? '🎬 VIDEO' : '🎵 AUDIO'}</span>
+            </div>
+            <div class="download-item-meta">
+              <h4 class="download-item-title">${this.escapeHtml(item.title)}</h4>
+              <p class="download-item-sub">
+                <span class="badge-offline-ready">✓ Offline Ready</span> • ${sizeMb} MB
+              </p>
+            </div>
+            <div class="download-item-actions">
+              <button class="btn-item-action btn-save-device" data-id="${item.videoId}" title="Save to Device File">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                  <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
+                </svg>
+              </button>
+              <button class="btn-item-action btn-delete-dl" data-id="${item.videoId}" title="Delete from Offline Storage">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                  <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Play click handler
+      this.downloadsList.querySelectorAll('.download-item-card').forEach(card => {
+        card.addEventListener('click', async (e) => {
+          if (e.target.closest('.btn-item-action')) return;
+          const id = card.dataset.id;
+          const record = await this.offlineDb.get(id);
+          if (record) {
+            this.openOfflineMedia(record);
+          }
+        });
+      });
+
+      // Delete handler
+      this.downloadsList.querySelectorAll('.btn-delete-dl').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const id = btn.dataset.id;
+          if (confirm('Delete this download from offline storage?')) {
+            await this.offlineDb.delete(id);
+            if (this.player.currentVideoData?.videoId === id) {
+              this.updateDownloadBtnState(id);
+            }
+            this.renderOfflineDownloads();
+            window.showToast('Removed from offline downloads');
+          }
+        });
+      });
+
+      // Save to device file handler
+      this.downloadsList.querySelectorAll('.btn-save-device').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const id = btn.dataset.id;
+          const record = await this.offlineDb.get(id);
+          if (record) {
+            const cleanName = (record.title || 'video').replace(/[/\\?%*:|"<>]/g, '_').trim().substring(0, 70);
+            const filename = `${cleanName}.${record.type === 'video' ? 'mp4' : 'm4a'}`;
+            const a = document.createElement('a');
+            const blobUrl = URL.createObjectURL(record.blob);
+            a.href = blobUrl;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => { URL.revokeObjectURL(blobUrl); a.remove(); }, 1500);
+            window.showToast('Saved file to device storage!');
+          }
+        });
+      });
+    } catch (e) {
+      console.warn('Render offline downloads error:', e);
+    }
+  }
+
+  openOfflineMedia(record) {
+    window.hideMiniPlayer();
+    this.watchModal.classList.remove('hidden');
+    document.getElementById('watchScroll').scrollTo({ top: 0, behavior: 'instant' });
+
+    this.watchTitle.textContent = record.title || 'Offline Video';
+    this.watchViews.textContent = '📶 Offline Local Playback';
+    this.watchDate.textContent = 'Zero Internet ✓';
+    this.channelName.textContent = record.author || 'Offline Media';
+    this.channelSubs.textContent = '';
+    this.descriptionText.textContent = `Playing from local offline device storage. Zero data used.`;
+    this.channelAvatar.src = record.thumbnail || '/icons/icon-192.png';
+
+    this.updateDownloadBtnState(record.videoId);
+    this.updateSaveButtonState(record.videoId);
+
+    this.player.playOfflineMedia(record);
   }
 
   checkStandaloneMode() {

@@ -10,7 +10,7 @@ const path = require('path');
 const os = require('os');
 const { URL } = require('url');
 const handleStream = require('./api/stream');
-const { getAudioInfo } = require('./api/stream');
+const { getAudioInfo, handleDownload, getMediaInfo } = require('./api/stream');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = __dirname;
@@ -168,6 +168,11 @@ const server = http.createServer(async (req, res) => {
   // API Direct Native Audio Stream Endpoint (100% Screen-Off & Background Play)
   if (pathname === '/api/stream') {
     return handleStream(req, res);
+  }
+
+  // API Direct File Download Endpoint (Local Offline Download for Video & Audio)
+  if (pathname === '/api/download') {
+    return handleDownload(req, res);
   }
 
   // API Audio Metadata Info Endpoint
