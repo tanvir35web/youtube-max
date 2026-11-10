@@ -192,6 +192,9 @@ class App {
     this.startDownloadVideoBtn = document.getElementById('startDownloadVideoBtn');
     this.downloadOptionsContainer = document.getElementById('downloadOptionsContainer');
     this.downloadProgressBox = document.getElementById('downloadProgressBox');
+    this.downloadFallbackBox = document.getElementById('downloadFallbackBox');
+    this.fallbackWebAudioBtn = document.getElementById('fallbackWebAudioBtn');
+    this.fallbackWebVideoBtn = document.getElementById('fallbackWebVideoBtn');
     this.dlStatusText = document.getElementById('dlStatusText');
     this.dlPercentText = document.getElementById('dlPercentText');
     this.dlProgressBar = document.getElementById('dlProgressBar');
@@ -1028,7 +1031,15 @@ class App {
 
     if (this.downloadOptionsContainer) this.downloadOptionsContainer.classList.remove('hidden');
     if (this.downloadProgressBox) this.downloadProgressBox.classList.add('hidden');
+    if (this.downloadFallbackBox) this.downloadFallbackBox.classList.add('hidden');
     if (this.downloadModal) this.downloadModal.classList.remove('hidden');
+
+    if (this.fallbackWebAudioBtn) {
+      this.fallbackWebAudioBtn.href = `https://10downloader.com/download?v=${encodeURIComponent(v.videoId)}`;
+    }
+    if (this.fallbackWebVideoBtn) {
+      this.fallbackWebVideoBtn.href = `https://10downloader.com/download?v=${encodeURIComponent(v.videoId)}`;
+    }
   }
 
   async updateDownloadBtnState(videoId) {
@@ -1051,6 +1062,7 @@ class App {
 
     if (this.downloadOptionsContainer) this.downloadOptionsContainer.classList.add('hidden');
     if (this.downloadProgressBox) this.downloadProgressBox.classList.remove('hidden');
+    if (this.downloadFallbackBox) this.downloadFallbackBox.classList.add('hidden');
     if (this.dlStatusText) this.dlStatusText.textContent = `Downloading ${type === 'video' ? 'Video (MP4)' : 'Audio (M4A)'}...`;
     if (this.dlPercentText) this.dlPercentText.textContent = '0%';
     if (this.dlProgressBar) this.dlProgressBar.style.width = '0%';
@@ -1058,7 +1070,14 @@ class App {
     try {
       const url = `/api/download?id=${encodeURIComponent(video.videoId)}&type=${type}`;
       const response = await fetch(url);
-      if (!response.ok) throw new Error('Download request failed: HTTP ' + response.status);
+      if (!response.ok) {
+        let errorMsg = 'HTTP ' + response.status;
+        try {
+          const errData = await response.json();
+          if (errData && errData.error) errorMsg = errData.error;
+        } catch (e) {}
+        throw new Error(errorMsg);
+      }
 
       const contentLength = +response.headers.get('Content-Length') || 0;
       const reader = response.body.getReader();
@@ -1079,6 +1098,10 @@ class App {
           if (this.dlPercentText) this.dlPercentText.textContent = `${mb} MB`;
           if (this.dlProgressBar) this.dlProgressBar.style.width = '75%';
         }
+      }
+
+      if (chunks.length === 0 || receivedBytes === 0) {
+        throw new Error('Downloaded file is empty');
       }
 
       if (this.dlStatusText) this.dlStatusText.textContent = 'Saving locally to device...';
@@ -1128,11 +1151,21 @@ class App {
       }, 700);
     } catch (err) {
       console.error('Download error:', err);
-      if (this.dlStatusText) this.dlStatusText.textContent = 'Download failed';
+      if (this.dlStatusText) this.dlStatusText.textContent = 'Download failed on cloud server';
       if (this.downloadOptionsContainer) this.downloadOptionsContainer.classList.remove('hidden');
       if (this.downloadProgressBox) this.downloadProgressBox.classList.add('hidden');
-      window.showToast('Download failed: ' + err.message);
+      if (this.downloadFallbackBox) {
+        this.downloadFallbackBox.classList.remove('hidden');
+        if (this.fallbackWebAudioBtn) {
+          this.fallbackWebAudioBtn.href = `https://10downloader.com/download?v=${encodeURIComponent(video.videoId)}`;
+        }
+        if (this.fallbackWebVideoBtn) {
+          this.fallbackWebVideoBtn.href = `https://10downloader.com/download?v=${encodeURIComponent(video.videoId)}`;
+        }
+      }
+      window.showToast('Server restricted: Use Web Mirror button to download');
     }
+  }
   }
 
   async renderOfflineDownloads() {

@@ -44,7 +44,7 @@
   </script>
 
   <!-- Cache-Busted Stylesheet to guarantee fresh load on iPhone -->
-  <link rel="stylesheet" href="/style.css?v=8.2">
+  <link rel="stylesheet" href="/style.css?v=8.4">
 </head>
 <body>
   <!-- Safe Area Wrapper for iPhone Notch & Home Indicator -->
@@ -285,6 +285,14 @@
 
           <!-- Quick Action Buttons -->
           <div class="watch-actions-bar">
+            <!-- Dedicated Play/Pause Video & Audio Toggle Button -->
+            <button id="videoPlayPauseBtn" class="action-pill primary-pill" title="Play or Pause">
+              <svg id="videoPlayPauseIcon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+              </svg>
+              <span id="videoPlayPauseText">Pause</span>
+            </button>
+
             <!-- Screen-off Audio Mode Toggle -->
             <button id="toggleAudioModeBtn" class="action-pill" title="Screen-off Audio Mode">
               <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
@@ -632,6 +640,21 @@
             </div>
             <p class="dl-note">Saving directly into your offline library and device storage...</p>
           </div>
+
+          <!-- Fallback Web Mirror Container (Visible if Vercel serverless IP gets restricted by YouTube) -->
+          <div id="downloadFallbackBox" class="download-fallback-box hidden">
+            <div class="fallback-alert">
+              <span>⚠️ Vercel server was restricted by YouTube. Use Instant Web Mirror below:</span>
+            </div>
+            <div class="fallback-links-row">
+              <a id="fallbackWebAudioBtn" href="#" target="_blank" rel="noopener noreferrer" class="fallback-btn audio-mirror">
+                🎵 Download Audio (Web Mirror)
+              </a>
+              <a id="fallbackWebVideoBtn" href="#" target="_blank" rel="noopener noreferrer" class="fallback-btn video-mirror">
+                🎬 Download Video (Web Mirror)
+              </a>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -641,8 +664,8 @@
 
   </div>
 
-  <script src="/player.js?v=8.2"></script>
-  <script src="/app.js?v=8.2"></script>
+  <script src="/player.js?v=8.4"></script>
+  <script src="/app.js?v=8.4"></script>
   <script>
     // Register & Force Update PWA Service Worker
     if ('serviceWorker' in navigator) {

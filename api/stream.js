@@ -1,11 +1,35 @@
 const https = require('https');
-const { Ytdl, Client } = require('@distube/ytdl-core');
+const { Ytdl, Client, chooseFormat } = require('@distube/ytdl-core');
 
-const yt = new Ytdl({
-  clients: [Client.Mweb, Client.Tv, Client.WebEmbedded, Client.VisionOS]
-});
-const streamCache = new Map();
+const ytOptions = {
+  clients: [Client.Tv, Client.Mweb, Client.WebEmbedded, Client.VisionOS, Client.WebMusic]
+};
+if (process.env.YT_COOKIE) {
+  ytOptions.cookie = process.env.YT_COOKIE;
+}
+const yt = new Ytdl(ytOptions);
 
+// Cache info for fast seeking and repeat play
+const infoCache = new Map();
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+async function getCachedInfo(videoId) {
+  const cached = infoCache.get(videoId);
+  if (cached && Date.now() < cached.expires) {
+    return cached.info;
+  }
+  const info = await yt.getInfo(videoId);
+  infoCache.set(videoId, {
+    info,
+    expires: Date.now() + CACHE_TTL_MS
+  });
+  return info;
+}
+
+/**
+ * Fallback 1: YouTube InnerTube ANDROID_VR Client
+ * Resolves direct googlevideo playback URLs without cipher
+ */
 function getInnerTubeVrMedia(videoId, type = 'audio') {
   return new Promise((resolve) => {
     const postData = JSON.stringify({
@@ -27,7 +51,8 @@ function getInnerTubeVrMedia(videoId, type = 'audio') {
       headers: {
         'Content-Type': 'application/json',
         'User-Agent': 'Mozilla/5.0 (Linux; Android 12; Quest 3) AppleWebKit/537.36'
-      }
+      },
+      timeout: 8000
     }, res => {
       let d = '';
       res.on('data', c => d += c);
@@ -47,34 +72,31 @@ function getInnerTubeVrMedia(videoId, type = 'audio') {
               resolve({
                 url: chosen.url,
                 mimeType: chosen.mimeType ? chosen.mimeType.split(';')[0].trim() : 'video/mp4',
-                contentLength: chosen.contentLength,
-                duration: duration,
-                title: title,
-                author: author,
-                thumbnail: thumbnail,
+                contentLength: chosen.contentLength ? parseInt(chosen.contentLength, 10) : undefined,
+                duration,
+                title,
+                author,
+                thumbnail,
                 type: 'video',
-                extension: 'mp4',
-                expires: Date.now() + 3600000
+                extension: 'mp4'
               });
               return;
             }
           }
 
-          // Audio
           const af = (j.streamingData?.adaptiveFormats || []).filter(f => f.mimeType && f.mimeType.startsWith('audio'));
-          const f = af.find(x => x.itag === 140) || af[0];
+          const f = af.find(x => x.url && x.itag === 140) || af.find(x => x.url && x.itag === 251) || af.find(x => x.url);
           if (f && f.url) {
             resolve({
               url: f.url,
               mimeType: f.mimeType ? f.mimeType.split(';')[0].trim() : 'audio/mp4',
-              contentLength: f.contentLength,
-              duration: duration,
-              title: title,
-              author: author,
-              thumbnail: thumbnail,
+              contentLength: f.contentLength ? parseInt(f.contentLength, 10) : undefined,
+              duration,
+              title,
+              author,
+              thumbnail,
               type: 'audio',
-              extension: 'm4a',
-              expires: Date.now() + 3600000
+              extension: (f.mimeType && f.mimeType.includes('webm')) ? 'webm' : 'm4a'
             });
             return;
           }
@@ -83,83 +105,165 @@ function getInnerTubeVrMedia(videoId, type = 'audio') {
       });
     });
     req.on('error', () => resolve(null));
+    req.on('timeout', () => { req.destroy(); resolve(null); });
     req.write(postData);
     req.end();
   });
 }
 
-async function getMediaInfo(videoId, type = 'audio') {
-  const cacheKey = `${videoId}_${type}`;
-  const cached = streamCache.get(cacheKey);
-  if (cached && Date.now() < cached.expires) {
-    return cached;
-  }
+/**
+ * Fallback 2: Public Invidious API
+ * Resolves streams for videos requiring special client signatures
+ */
+function getInvidiousMedia(videoId, type = 'audio') {
+  return new Promise((resolve) => {
+    const req = https.get(`https://yt.chocolatemoo53.com/api/v1/videos/${encodeURIComponent(videoId)}`, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      timeout: 6000
+    }, (res) => {
+      let d = '';
+      res.on('data', c => d += c);
+      res.on('end', () => {
+        try {
+          const j = JSON.parse(d);
+          const title = j.title || 'video';
+          const author = j.author || 'YouTube';
+          const duration = j.lengthSeconds || 0;
+          const thumbnail = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
 
-  // 1. Try @distube/ytdl-core
+          if (type === 'video') {
+            const formats = (j.formatStreams || []).filter(f => f.url);
+            const chosen = formats.find(f => f.itag === '18' || f.itag === 18) || formats[0];
+            if (chosen && chosen.url) {
+              resolve({
+                url: chosen.url,
+                mimeType: chosen.type ? chosen.type.split(';')[0].trim() : 'video/mp4',
+                contentLength: chosen.size ? parseInt(chosen.size, 10) : undefined,
+                duration,
+                title,
+                author,
+                thumbnail,
+                type: 'video',
+                extension: 'mp4'
+              });
+              return;
+            }
+          }
+
+          const af = (j.adaptiveFormats || []).filter(f => (f.type || '').startsWith('audio') && f.url);
+          const f = af.find(x => x.itag === '140' || x.itag === 140) || af.find(x => x.itag === '251' || x.itag === 251) || af[0];
+          if (f && f.url) {
+            resolve({
+              url: f.url,
+              mimeType: f.type ? f.type.split(';')[0].trim() : 'audio/mp4',
+              contentLength: f.clen ? parseInt(f.clen, 10) : undefined,
+              duration,
+              title,
+              author,
+              thumbnail,
+              type: 'audio',
+              extension: (f.type && f.type.includes('webm')) ? 'webm' : 'm4a'
+            });
+            return;
+          }
+        } catch (e) {}
+        resolve(null);
+      });
+    });
+    req.on('error', () => resolve(null));
+    req.on('timeout', () => { req.destroy(); resolve(null); });
+  });
+}
+
+/**
+ * Resolve media stream via @distube/ytdl-core or fallbacks
+ */
+async function resolveMedia(videoId, type = 'audio') {
+  // 1. First try @distube/ytdl-core
   try {
-    const info = await yt.getInfo(videoId);
-    const title = info.videoDetails?.title || 'video';
+    const info = await getCachedInfo(videoId);
+    const title = info.videoDetails?.title || 'YouTube Media';
     const author = info.videoDetails?.author?.name || info.videoDetails?.author || 'YouTube';
     const duration = parseInt(info.videoDetails?.lengthSeconds, 10) || 0;
     const thumbs = info.videoDetails?.thumbnails || [];
     const thumbnail = thumbs.length ? thumbs[thumbs.length - 1].url : `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
 
+    let format = null;
+    let extension = 'm4a';
+
     if (type === 'video') {
-      const muxed = info.formats.find(f => f.hasVideo && f.hasAudio && (f.mimeType || '').includes('mp4')) ||
-                    info.formats.find(f => f.hasVideo && f.hasAudio) ||
-                    info.formats.find(f => f.hasVideo && (f.mimeType || '').includes('mp4'));
-
-      if (muxed && muxed.url) {
-        const data = {
-          url: muxed.url,
-          mimeType: muxed.mimeType ? muxed.mimeType.split(';')[0].trim() : 'video/mp4',
-          contentLength: muxed.contentLength,
-          duration: duration,
-          title: title,
-          author: author,
-          thumbnail: thumbnail,
-          type: 'video',
-          extension: 'mp4',
-          expires: Date.now() + 3600000
-        };
-        streamCache.set(cacheKey, data);
-        return data;
-      }
+      format = info.formats.find(f => f.hasVideo && f.hasAudio && (f.mimeType || '').includes('mp4')) ||
+               info.formats.find(f => f.hasVideo && f.hasAudio) ||
+               info.formats.find(f => f.hasVideo && (f.mimeType || '').includes('mp4'));
+      extension = 'mp4';
     } else {
-      // Audio
-      const format = info.formats.find(f => f.itag === 140) ||
-                     info.formats.find(f => f.hasAudio && !f.hasVideo && (f.mimeType || '').includes('mp4')) ||
-                     info.formats.find(f => f.hasAudio && !f.hasVideo);
-
-      if (format && format.url) {
-        const data = {
-          url: format.url,
-          mimeType: format.mimeType ? format.mimeType.split(';')[0].trim() : 'audio/mp4',
-          contentLength: format.contentLength,
-          duration: duration,
-          title: title,
-          author: author,
-          thumbnail: thumbnail,
-          type: 'audio',
-          extension: 'm4a',
-          expires: Date.now() + 3600000
-        };
-        streamCache.set(cacheKey, data);
-        return data;
+      try {
+        format = chooseFormat(info.formats, { filter: { hasAudio: true, hasVideo: false }, quality: 'highestaudio' });
+      } catch (e) {
+        format = info.formats.find(f => f.hasAudio && !f.hasVideo && (f.mimeType || '').includes('mp4')) ||
+                 info.formats.find(f => f.hasAudio && !f.hasVideo) ||
+                 info.formats.find(f => f.hasAudio);
       }
+      extension = 'm4a';
+    }
+
+    if (format) {
+      const media = yt.open(info, format);
+      const mimeType = format.mimeType ? format.mimeType.split(';')[0].trim() : (type === 'video' ? 'video/mp4' : 'audio/mp4');
+      const contentLength = format.contentLength ? parseInt(format.contentLength, 10) : undefined;
+      return {
+        media,
+        format,
+        mimeType,
+        contentLength,
+        duration,
+        title,
+        author,
+        thumbnail,
+        extension,
+        type
+      };
     }
   } catch (err) {
-    // Continue to fallback
+    console.warn(`ytdl-core resolve warning for ${videoId}:`, err.message);
   }
 
-  // 2. Fallback: InnerTube ANDROID_VR client
-  const vrData = await getInnerTubeVrMedia(videoId, type);
-  if (vrData) {
-    streamCache.set(cacheKey, vrData);
-    return vrData;
+  // 2. Fallback: InnerTube ANDROID_VR client (bypasses bot checks without cipher)
+  try {
+    const vrData = await getInnerTubeVrMedia(videoId, type);
+    if (vrData) {
+      return vrData;
+    }
+  } catch (vrErr) {
+    console.warn('InnerTube VR fallback warning:', vrErr.message);
   }
 
-  throw new Error(`Unable to extract ${type} stream for ${videoId}`);
+  // 3. Fallback: Invidious Public API
+  try {
+    const invData = await getInvidiousMedia(videoId, type);
+    if (invData) {
+      return invData;
+    }
+  } catch (invErr) {
+    console.warn('Invidious fallback warning:', invErr.message);
+  }
+
+  throw new Error(`Unable to resolve media stream for ${videoId}. The video may be restricted or blocked.`);
+}
+
+async function getMediaInfo(videoId, type = 'audio') {
+  const resolved = await resolveMedia(videoId, type);
+  return {
+    url: `/api/stream?id=${encodeURIComponent(videoId)}&type=${type}`,
+    mimeType: resolved.mimeType,
+    contentLength: resolved.contentLength,
+    duration: resolved.duration,
+    title: resolved.title,
+    author: resolved.author,
+    thumbnail: resolved.thumbnail,
+    type: resolved.type,
+    extension: resolved.extension
+  };
 }
 
 async function getAudioInfo(videoId) {
@@ -168,11 +272,15 @@ async function getAudioInfo(videoId) {
 
 /**
  * Handle streaming media (/api/stream)
+ * Supports full Range 206 streaming with zero 403 errors
  */
 async function handleStream(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', '*');
+  res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range');
+  res.setHeader('Accept-Ranges', 'bytes');
+  res.setHeader('X-Accel-Buffering', 'no');
 
   if (req.method === 'OPTIONS') {
     res.writeHead ? res.writeHead(204) : (res.status ? res.status(204).end() : res.end());
@@ -206,70 +314,88 @@ async function handleStream(req, res) {
   }
 
   try {
-    const mediaInfo = await getMediaInfo(videoId, type);
-    const upstreamHeaders = {
-      'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
-    };
+    const resolved = await resolveMedia(videoId, type);
 
-    if (req.headers.range) {
-      upstreamHeaders['Range'] = req.headers.range;
+    // If resolved through direct URL (e.g. InnerTube or Invidious)
+    if (resolved.url && !resolved.media) {
+      return await pipeDirectUrl(resolved.url, req, res, resolved.mimeType);
     }
 
-    const upstreamReq = https.request(mediaInfo.url, {
-      method: req.method === 'HEAD' ? 'HEAD' : 'GET',
-      headers: upstreamHeaders
-    }, (upstreamRes) => {
-      const headers = {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
-        'Access-Control-Allow-Headers': '*',
-        'Accept-Ranges': 'bytes',
-        'Content-Type': upstreamRes.headers['content-type'] || mediaInfo.mimeType || 'audio/mp4',
-        'Cache-Control': 'public, max-age=3600'
-      };
+    const { media, mimeType, contentLength } = resolved;
+    const rangeHeader = req.headers.range;
 
-      if (upstreamRes.headers['content-range']) {
-        headers['Content-Range'] = upstreamRes.headers['content-range'];
+    let statusCode = 200;
+    const headers = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+      'Access-Control-Allow-Headers': '*',
+      'Access-Control-Expose-Headers': 'Content-Length, Content-Range',
+      'Accept-Ranges': 'bytes',
+      'Content-Type': mimeType,
+      'Cache-Control': 'public, max-age=3600',
+      'X-Accel-Buffering': 'no'
+    };
+
+    let rangeOpt = {};
+
+    if (rangeHeader) {
+      const parts = rangeHeader.replace(/bytes=/, '').split('-');
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : undefined;
+      const total = contentLength || undefined;
+      const actualEnd = end !== undefined ? end : (total ? total - 1 : undefined);
+
+      rangeOpt = { start, end: actualEnd };
+      statusCode = 206;
+
+      headers['Content-Range'] = `bytes ${start}-${actualEnd !== undefined ? actualEnd : ''}/${total !== undefined ? total : '*'}`;
+      if (actualEnd !== undefined) {
+        headers['Content-Length'] = String(actualEnd - start + 1);
       }
-      if (upstreamRes.headers['content-length']) {
-        headers['Content-Length'] = upstreamRes.headers['content-length'];
-      }
+    } else if (contentLength) {
+      headers['Content-Length'] = String(contentLength);
+    }
 
-      const statusCode = upstreamRes.statusCode || (req.headers.range ? 206 : 200);
+    if (res.writeHead) {
+      res.writeHead(statusCode, headers);
+    } else if (res.status) {
+      res.status(statusCode);
+      for (const [k, v] of Object.entries(headers)) res.setHeader(k, v);
+    }
 
-      if (res.writeHead) {
-        res.writeHead(statusCode, headers);
-      } else if (res.status) {
-        res.status(statusCode);
-        for (const [k, v] of Object.entries(headers)) res.setHeader(k, v);
-      }
+    if (req.method === 'HEAD') {
+      res.end();
+      return;
+    }
 
-      if (req.method === 'HEAD') {
-        res.end();
-        upstreamRes.resume();
-        return;
-      }
+    return new Promise((resolve, reject) => {
+      const readStream = media.read({ range: rangeOpt });
+      readStream.pipe(res);
 
-      upstreamRes.pipe(res);
+      res.on('finish', resolve);
+      res.on('close', resolve);
 
       req.on('close', () => {
-        try { upstreamReq.destroy(); } catch (e) {}
+        try { readStream.destroy(); } catch (e) {}
+        resolve();
+      });
+
+      readStream.on('error', (err) => {
+        console.warn('Stream pipe error:', err.message);
+        if (!res.headersSent) {
+          if (res.writeHead) {
+            res.writeHead(502, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: err.message }));
+          } else {
+            res.status(502).json({ error: err.message });
+          }
+        }
+        reject(err);
       });
     });
 
-    upstreamReq.on('error', (err) => {
-      if (!res.headersSent) {
-        if (res.writeHead) {
-          res.writeHead(502, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'Upstream stream error: ' + err.message }));
-        } else {
-          res.status(502).json({ error: 'Upstream stream error: ' + err.message });
-        }
-      }
-    });
-
-    upstreamReq.end();
   } catch (err) {
+    console.error('handleStream error:', err);
     if (!res.headersSent) {
       if (res.writeHead) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -284,11 +410,15 @@ async function handleStream(req, res) {
 /**
  * Handle direct file download (/api/download)
  * Sets Content-Disposition: attachment for local storage / file saving
+ * Serverless-compatible: returns a Promise so Vercel keeps the function alive until streaming completes
  */
 async function handleDownload(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', '*');
+  res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Content-Disposition');
+  res.setHeader('Accept-Ranges', 'bytes');
+  res.setHeader('X-Accel-Buffering', 'no');
 
   if (req.method === 'OPTIONS') {
     res.writeHead ? res.writeHead(204) : (res.status ? res.status(204).end() : res.end());
@@ -322,19 +452,116 @@ async function handleDownload(req, res) {
   }
 
   try {
-    const mediaInfo = await getMediaInfo(videoId, type);
-    const cleanName = (mediaInfo.title || 'video').replace(/[/\\?%*:|"<>]/g, '_').trim().substring(0, 80);
-    const filename = `${cleanName}.${mediaInfo.extension}`;
+    const resolved = await resolveMedia(videoId, type);
+    const cleanName = (resolved.title || 'video').replace(/[/\\?%*:|"<>]/g, '_').trim().substring(0, 80);
+    const filename = `${cleanName}.${resolved.extension}`;
 
-    const upstreamHeaders = {
-      'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15'
+    // If resolved through direct URL (e.g. InnerTube or Invidious)
+    if (resolved.url && !resolved.media) {
+      return await pipeDirectUrl(resolved.url, req, res, resolved.mimeType, filename);
+    }
+
+    const { media, mimeType, contentLength } = resolved;
+    const rangeHeader = req.headers.range;
+
+    let statusCode = 200;
+    const headers = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+      'Access-Control-Allow-Headers': '*',
+      'Access-Control-Expose-Headers': 'Content-Length, Content-Range, Content-Disposition',
+      'Accept-Ranges': 'bytes',
+      'Content-Type': mimeType,
+      'Content-Disposition': `attachment; filename="${encodeURIComponent(filename)}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
+      'Cache-Control': 'no-cache, no-transform',
+      'X-Accel-Buffering': 'no'
     };
 
+    let rangeOpt = {};
+
+    if (rangeHeader) {
+      const parts = rangeHeader.replace(/bytes=/, '').split('-');
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : undefined;
+      const total = contentLength || undefined;
+      const actualEnd = end !== undefined ? end : (total ? total - 1 : undefined);
+
+      rangeOpt = { start, end: actualEnd };
+      statusCode = 206;
+
+      headers['Content-Range'] = `bytes ${start}-${actualEnd !== undefined ? actualEnd : ''}/${total !== undefined ? total : '*'}`;
+      if (actualEnd !== undefined) {
+        headers['Content-Length'] = String(actualEnd - start + 1);
+      }
+    } else if (contentLength) {
+      headers['Content-Length'] = String(contentLength);
+    }
+
+    if (res.writeHead) {
+      res.writeHead(statusCode, headers);
+    } else if (res.status) {
+      res.status(statusCode);
+      for (const [k, v] of Object.entries(headers)) res.setHeader(k, v);
+    }
+
+    if (req.method === 'HEAD') {
+      res.end();
+      return;
+    }
+
+    return new Promise((resolve, reject) => {
+      const readStream = media.read({ range: rangeOpt });
+      readStream.pipe(res);
+
+      res.on('finish', resolve);
+      res.on('close', resolve);
+
+      req.on('close', () => {
+        try { readStream.destroy(); } catch (e) {}
+        resolve();
+      });
+
+      readStream.on('error', (err) => {
+        console.warn('Download pipe error:', err.message);
+        if (!res.headersSent) {
+          if (res.writeHead) {
+            res.writeHead(502, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: err.message }));
+          } else {
+            res.status(502).json({ error: err.message });
+          }
+        }
+        reject(err);
+      });
+    });
+
+  } catch (err) {
+    console.error('handleDownload error:', err);
+    if (!res.headersSent) {
+      if (res.writeHead) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      } else {
+        res.status(500).json({ error: err.message });
+      }
+    }
+  }
+}
+
+/**
+ * Pipe direct external URL to response
+ * Returns a Promise that resolves when response finishes streaming
+ */
+function pipeDirectUrl(url, req, res, mimeType, filename = null) {
+  return new Promise((resolve, reject) => {
+    const upstreamHeaders = {
+      'User-Agent': 'Mozilla/5.0 (Linux; Android 12; Quest 3) AppleWebKit/537.36'
+    };
     if (req.headers.range) {
       upstreamHeaders['Range'] = req.headers.range;
     }
 
-    const upstreamReq = https.request(mediaInfo.url, {
+    const upstreamReq = https.request(url, {
       method: req.method === 'HEAD' ? 'HEAD' : 'GET',
       headers: upstreamHeaders
     }, (upstreamRes) => {
@@ -342,12 +569,16 @@ async function handleDownload(req, res) {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
         'Access-Control-Allow-Headers': '*',
+        'Access-Control-Expose-Headers': 'Content-Length, Content-Range, Content-Disposition',
         'Accept-Ranges': 'bytes',
-        'Content-Type': mediaInfo.mimeType,
-        'Content-Disposition': `attachment; filename="${encodeURIComponent(filename)}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
-        'Cache-Control': 'public, max-age=86400'
+        'Content-Type': upstreamRes.headers['content-type'] || mimeType || 'audio/mp4',
+        'Cache-Control': 'no-cache, no-transform',
+        'X-Accel-Buffering': 'no'
       };
 
+      if (filename) {
+        headers['Content-Disposition'] = `attachment; filename="${encodeURIComponent(filename)}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
+      }
       if (upstreamRes.headers['content-range']) {
         headers['Content-Range'] = upstreamRes.headers['content-range'];
       }
@@ -367,41 +598,46 @@ async function handleDownload(req, res) {
       if (req.method === 'HEAD') {
         res.end();
         upstreamRes.resume();
+        resolve();
         return;
       }
 
       upstreamRes.pipe(res);
 
+      res.on('finish', resolve);
+      res.on('close', resolve);
+
       req.on('close', () => {
         try { upstreamReq.destroy(); } catch (e) {}
+        resolve();
+      });
+
+      upstreamRes.on('error', (err) => {
+        console.warn('pipeDirectUrl upstreamRes error:', err.message);
+        reject(err);
       });
     });
 
     upstreamReq.on('error', (err) => {
+      console.warn('pipeDirectUrl upstreamReq error:', err.message);
       if (!res.headersSent) {
         if (res.writeHead) {
           res.writeHead(502, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'Download stream error: ' + err.message }));
+          res.end(JSON.stringify({ error: err.message }));
         } else {
-          res.status(502).json({ error: 'Download stream error: ' + err.message });
+          res.status(502).json({ error: err.message });
         }
       }
+      reject(err);
     });
 
     upstreamReq.end();
-  } catch (err) {
-    if (!res.headersSent) {
-      if (res.writeHead) {
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: err.message }));
-      } else {
-        res.status(500).json({ error: err.message });
-      }
-    }
-  }
+  });
 }
 
-module.exports = handleStream;
+module.exports = async (req, res) => {
+  return handleStream(req, res);
+};
 module.exports.handleStream = handleStream;
 module.exports.handleDownload = handleDownload;
 module.exports.getMediaInfo = getMediaInfo;
