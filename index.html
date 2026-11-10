@@ -16,7 +16,8 @@
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#0f0f0f">
   
-  <link rel="stylesheet" href="/style.css">
+  <!-- Cache-Busted Stylesheet to guarantee fresh load on iPhone -->
+  <link rel="stylesheet" href="/style.css?v=5.0">
 </head>
 <body>
   <!-- Safe Area Wrapper for iPhone Notch & Home Indicator -->
@@ -351,13 +352,15 @@
 
   </div>
 
-  <script src="/player.js"></script>
-  <script src="/app.js"></script>
+  <script src="/player.js?v=5.0"></script>
+  <script src="/app.js?v=5.0"></script>
   <script>
-    // Register PWA Service Worker
+    // Register & Force Update PWA Service Worker
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').catch((err) => {
+        navigator.serviceWorker.register('/sw.js').then((reg) => {
+          reg.update(); // Force check for new service worker on load
+        }).catch((err) => {
           console.log('SW registration error:', err);
         });
       });

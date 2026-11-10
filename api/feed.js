@@ -1,7 +1,7 @@
 const https = require('https');
 
 function searchYouTube(query) {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const postData = JSON.stringify({
       context: {
         client: {
@@ -58,19 +58,18 @@ function searchYouTube(query) {
           }
           resolve(videos);
         } catch (e) {
-          reject(e);
+          resolve([]);
         }
       });
     });
 
-    req.on('error', reject);
+    req.on('error', () => resolve([]));
     req.write(postData);
     req.end();
   });
 }
 
 module.exports = async (req, res) => {
-  // CORS Headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', '*');
@@ -95,10 +94,9 @@ module.exports = async (req, res) => {
   const query = topicQueries[topic] || topic;
 
   try {
-    const videos = await searchYouTube(query);
-    res.status(200).json(videos);
+    const list1 = await searchYouTube(query);
+    res.status(200).json(list1);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
-

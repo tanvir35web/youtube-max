@@ -177,7 +177,7 @@ html, body {
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   padding: 0;
-  padding-bottom: calc(56px + var(--sab)); /* Leaves room for bottom nav */
+  padding-bottom: calc(50px + var(--sab) * 0.4);
 }
 
 .video-grid {
@@ -346,7 +346,7 @@ html, body {
   left: 0;
   width: 100vw;
   height: calc(48px + var(--sab));
-  padding-bottom: var(--sab);
+  padding-bottom: calc(var(--sab) * 0.35);
   background: var(--nav-bg);
   -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
@@ -358,17 +358,20 @@ html, body {
 }
 
 .nav-item {
+  flex: 1;
+  height: 44px;
   background: none;
   border: none;
   color: var(--text-sub);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
+  justify-content: center;
+  gap: 2px;
   font-size: 10px;
   font-weight: 500;
   cursor: pointer;
-  padding: 4px 14px;
+  padding: 0;
   transition: color 0.15s ease;
 }
 
@@ -382,7 +385,7 @@ html, body {
    -------------------------------------------------------------------------- */
 .mini-player {
   position: fixed;
-  bottom: calc(52px + var(--sab));
+  bottom: calc(48px + var(--sab) * 0.35 + 6px);
   left: 8px;
   right: 8px;
   height: 52px;
