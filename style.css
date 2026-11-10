@@ -20,6 +20,10 @@
   --sar: env(safe-area-inset-right, 0px);
   --sab: env(safe-area-inset-bottom, 0px);
   --sal: env(safe-area-inset-left, 0px);
+
+  /* Mobile bottom navigation: one source of truth for its height */
+  --nav-pad-bottom: max(calc(var(--sab) - 14px), 6px);
+  --bottom-nav-h: calc(56px + var(--nav-pad-bottom));
 }
 
 * {
@@ -183,7 +187,7 @@ html, body {
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   padding: 0;
-  padding-bottom: calc(56px + var(--sab) * 0.4);
+  padding-bottom: calc(var(--bottom-nav-h) + 16px);
 }
 
 .video-grid {
@@ -350,10 +354,9 @@ html, body {
   position: fixed;
   bottom: 0;
   left: 0;
-  width: 100vw;
-  height: calc(52px + max(var(--sab) - 18px, 8px));
-  padding-bottom: max(var(--sab) - 18px, 8px);
-  padding-top: 4px;
+  right: 0;
+  height: var(--bottom-nav-h);
+  padding: 4px max(var(--sar), 4px) var(--nav-pad-bottom) max(var(--sal), 4px);
   background: var(--nav-bg);
   -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
@@ -379,20 +382,22 @@ html, body {
 }
 
 .nav-item {
+  position: relative;
   flex: 1;
-  height: 44px;
+  min-width: 0;
+  height: 48px;
   background: none;
   border: none;
   color: var(--text-sub);
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 3px;
+  justify-content: flex-start;
+  gap: 5px;
   font-size: 10px;
   font-weight: 500;
   cursor: pointer;
-  padding: 0;
+  padding: 4px 0 0;
   margin: 0;
   transition: color 0.15s ease;
   width: 100%;
@@ -400,22 +405,62 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Active pill behind the icon (mobile tab bar) */
+.nav-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 56px;
+  height: 30px;
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.14);
+  transform: translateX(-50%) scaleX(0.5);
+  opacity: 0;
+  transition: opacity 0.18s ease, transform 0.22s cubic-bezier(0.2, 0, 0, 1);
+  pointer-events: none;
+}
+
 .nav-item.active {
   color: #fff;
+}
+
+.nav-item.active::before {
+  opacity: 1;
+  transform: translateX(-50%) scaleX(1);
+}
+
+.nav-item.active span {
   font-weight: 600;
 }
 
+.nav-item:active svg {
+  transform: scale(0.9);
+}
+
+.nav-item:focus-visible {
+  outline: 2px solid #3ea6ff;
+  outline-offset: -2px;
+  border-radius: 12px;
+}
+
 .nav-item svg {
+  position: relative;
   width: 22px;
   height: 22px;
   min-width: 22px;
   margin: 0;
+  transition: transform 0.12s ease;
   flex-shrink: 0;
   fill: currentColor;
 }
 
 .nav-item span {
-  font-size: 10px;
+  position: relative;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 10.5px;
   font-weight: 500;
   line-height: 1.2;
   text-align: center;
@@ -430,7 +475,7 @@ html, body {
    -------------------------------------------------------------------------- */
 .mini-player {
   position: fixed;
-  bottom: calc(54px + max(var(--sab) - 18px, 8px) + 6px);
+  bottom: calc(var(--bottom-nav-h) + 8px);
   left: 8px;
   right: 8px;
   height: 50px;
@@ -949,7 +994,7 @@ html, body {
 .sub-screen {
   flex: 1;
   overflow-y: auto;
-  padding: calc(14px + var(--sat)) 14px calc(56px + var(--sab));
+  padding: 16px 14px calc(var(--bottom-nav-h) + 24px);
 }
 
 .screen-header {
@@ -1842,6 +1887,8 @@ html, body {
   padding: 2px 8px;
   border-radius: 10px;
   font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* Download Modal */
@@ -2210,7 +2257,7 @@ html, body {
 }
 
 .sidebar-desktop-extra {
-  display: none !important;
+  display: none;
 }
 
 .watch-desktop-header {
@@ -2245,12 +2292,15 @@ html, body {
   display: flex;
 }
 
-.mobile-only-nav {
-  display: flex !important;
-  flex: 1 !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  justify-content: center !important;
+/* Header settings duplicates the bottom-nav Settings tab on phones */
+@media (max-width: 767px) {
+  #settingsBtn {
+    display: none;
+  }
+
+  .header-right {
+    gap: 2px;
+  }
 }
 
 /* ==========================================================================
@@ -2334,6 +2384,11 @@ html, body {
 
   #searchBackBtn {
     display: none !important;
+  }
+
+  /* Empty suggestions box added 20px under the bar and pushed it to the top edge */
+  .search-suggestions:empty {
+    display: none;
   }
 
   .search-bar-wrap {
@@ -2456,7 +2511,7 @@ html, body {
     display: none !important;
   }
 
-  .mobile-only-nav {
+  #bottomNav .mobile-only-nav {
     display: none !important;
   }
 
@@ -2484,9 +2539,30 @@ html, body {
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
     padding: 12px 0 24px;
+    border-top: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
     z-index: 20;
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
     transition: width 0.22s cubic-bezier(0.2, 0, 0, 1), padding 0.22s;
+  }
+
+  #bottomNav.sidebar-nav:hover {
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  }
+
+  /* No mobile active pill in the sidebar */
+  .sidebar-nav .nav-item::before {
+    display: none !important;
+  }
+
+  .sidebar-nav .nav-item:focus-visible {
+    outline: 2px solid #3ea6ff;
+    outline-offset: -2px;
   }
 
   /* Collapsed Mini Sidebar (YouTube Mini Guide) */
@@ -2498,12 +2574,16 @@ html, body {
   .sidebar-primary-section {
     display: flex;
     flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    flex: none;
+    height: auto;
     gap: 1px;
     padding: 0;
     width: 100%;
   }
 
-  .sidebar-desktop-extra {
+  #bottomNav .sidebar-desktop-extra {
     display: flex;
     flex-direction: column;
     gap: 1px;
@@ -2511,8 +2591,8 @@ html, body {
     padding: 0;
   }
 
-  #app.sidebar-collapsed .sidebar-desktop-extra {
-    display: none !important;
+  #app.sidebar-collapsed #bottomNav .sidebar-desktop-extra {
+    display: none;
   }
 
   /* Full Desktop Sidebar Items (Horizontal Row Layout) */
@@ -2546,8 +2626,15 @@ html, body {
 
   .sidebar-nav .nav-item.active {
     background-color: #272727 !important;
-    font-weight: 500 !important;
     color: #fff !important;
+  }
+
+  .sidebar-nav .nav-item.active span {
+    font-weight: 500 !important;
+  }
+
+  .sidebar-nav .nav-item.active:hover {
+    background-color: #3a3a3a !important;
   }
 
   .sidebar-nav .nav-item svg {
@@ -2593,9 +2680,14 @@ html, body {
     margin-bottom: 0 !important;
   }
 
+  #app.sidebar-collapsed #bottomNav.sidebar-nav {
+    border-right-color: transparent;
+  }
+
   #app.sidebar-collapsed .sidebar-primary-section .nav-item span {
     font-size: 10px !important;
     font-weight: 400 !important;
+    line-height: 14px !important;
     text-align: center !important;
     max-width: 64px !important;
     flex: none !important;

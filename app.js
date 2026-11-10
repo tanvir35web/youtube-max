@@ -811,16 +811,21 @@ class App {
       menuToggleBtn.addEventListener('click', () => {
         const app = document.getElementById('app');
         const isCollapsed = app.classList.toggle('sidebar-collapsed');
+        // Explore items appear/disappear with the full sidebar, so re-pick the active item
+        this.syncNavForTopic(this.activeTopic);
         try {
           localStorage.setItem('yt_sidebar_collapsed', isCollapsed ? 'true' : 'false');
         } catch (e) {}
       });
 
+      // Saved preference wins; otherwise use the mini guide on narrow (tablet) widths
+      let savedPref = null;
       try {
-        if (localStorage.getItem('yt_sidebar_collapsed') === 'true') {
-          document.getElementById('app').classList.add('sidebar-collapsed');
-        }
+        savedPref = localStorage.getItem('yt_sidebar_collapsed');
       } catch (e) {}
+      if (savedPref === 'true' || (savedPref === null && window.innerWidth < 1100)) {
+        document.getElementById('app').classList.add('sidebar-collapsed');
+      }
     }
 
     // Desktop Watch Top Bar Back & PiP Buttons
@@ -842,7 +847,7 @@ class App {
     const navDownloads = document.getElementById('navDownloads');
     if (navDownloads) {
       navDownloads.addEventListener('click', () => {
-        this.switchTab('library');
+        this.switchTab('library', navDownloads);
         this.renderLibrary();
         setTimeout(() => {
           const sec = document.getElementById('downloadsList');
@@ -855,7 +860,7 @@ class App {
     const navSaved = document.getElementById('navSaved');
     if (navSaved) {
       navSaved.addEventListener('click', () => {
-        this.switchTab('library');
+        this.switchTab('library', navSaved);
         this.renderLibrary();
         setTimeout(() => {
           const sec = document.getElementById('savedVideosList');
@@ -868,7 +873,7 @@ class App {
     const navHistory = document.getElementById('navHistory');
     if (navHistory) {
       navHistory.addEventListener('click', () => {
-        this.switchTab('library');
+        this.switchTab('library', navHistory);
         this.renderLibrary();
         setTimeout(() => {
           const sec = document.getElementById('historyVideosList');
@@ -945,17 +950,43 @@ class App {
         c.classList.remove('active');
       }
     });
+    this.syncNavForTopic(topic);
   }
 
-  switchTab(tab) {
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  // Highlight exactly one navigation item (bottom nav on mobile, sidebar on desktop)
+  setActiveNav(el) {
+    document.querySelectorAll('#bottomNav .nav-item').forEach(n => {
+      n.classList.toggle('active', n === el);
+      if (n === el) n.setAttribute('aria-current', 'page');
+      else n.removeAttribute('aria-current');
+    });
+  }
+
+  // Pick the nav item matching a feed topic
+  syncNavForTopic(topic) {
+    if (!this.libraryScreen.classList.contains('hidden')) return;
+    let defaultTopic = 'bangla';
+    try {
+      defaultTopic = localStorage.getItem('ytmax_default_topic') || 'bangla';
+    } catch (e) {}
+    let el = this.navHome;
+    if (topic === 'trending') el = this.navTrending;
+    else if (topic !== defaultTopic) {
+      const explore = document.querySelector(`#bottomNav [data-explore="${topic}"]`);
+      // Only when the sidebar Explore list is actually visible (expanded desktop sidebar)
+      if (explore && explore.offsetParent !== null) el = explore;
+    }
+    this.setActiveNav(el);
+  }
+
+  switchTab(tab, activeEl) {
     if (tab === 'home') {
-      this.navHome.classList.add('active');
+      this.setActiveNav(activeEl || this.navHome);
       document.getElementById('mainFeed').classList.remove('hidden');
       this.categoryChips.classList.remove('hidden');
       this.libraryScreen.classList.add('hidden');
     } else if (tab === 'library') {
-      this.navLibrary.classList.add('active');
+      this.setActiveNav(activeEl || this.navLibrary);
       document.getElementById('mainFeed').classList.add('hidden');
       this.categoryChips.classList.add('hidden');
       this.libraryScreen.classList.remove('hidden');
