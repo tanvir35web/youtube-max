@@ -1,8 +1,8 @@
-const CACHE_NAME = 'yt-max-v8-4';
+const CACHE_NAME = 'yt-max-v8-5';
 const APP_SHELL_FILES = [
   '/',
   '/index.html',
-  '/style.css?v=8.4',
+  '/style.css?v=8.5',
   '/app.js?v=8.4',
   '/player.js?v=8.4',
   '/manifest.json',
