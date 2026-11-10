@@ -540,7 +540,7 @@ html, body {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100vw;
+  right: 0;
   height: 100%;
   height: var(--app-height, 100dvh);
   bottom: 0;
@@ -558,9 +558,11 @@ html, body {
 }
 
 /* Video Player Header Container (Hugs Notch/Dynamic Island Seamlessly) */
+/* Edge-to-edge on phones and pinned to the top while the details scroll underneath */
 .player-container {
-  position: relative;
-  width: 100vw;
+  position: sticky;
+  top: 0;
+  width: 100%;
   aspect-ratio: 16 / 9;
   background: #000;
   padding-top: var(--sat);
@@ -813,7 +815,17 @@ html, body {
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  padding: 14px 14px calc(24px + var(--sab));
+  /* No side padding here: the player must span the full width.
+     Text sections get their own gutter below. */
+  padding: 0 0 calc(24px + var(--sab));
+}
+
+.watch-meta {
+  padding: 12px 14px 0;
+}
+
+.watch-secondary-col {
+  padding: 0 14px;
 }
 
 .watch-title {
@@ -835,7 +847,10 @@ html, body {
   align-items: center;
   gap: 8px;
   overflow-x: auto;
-  padding-bottom: 12px;
+  /* Bleed to the screen edges so pills scroll off the edge, not off the gutter */
+  margin: 0 -14px;
+  padding: 0 14px 12px;
+  scroll-padding: 0 14px;
   scrollbar-width: none;
 }
 
@@ -2301,6 +2316,12 @@ html, body {
   .header-right {
     gap: 2px;
   }
+
+  /* Let the sticky player's containing block be the whole watch page,
+     so it stays pinned while scrolling through Up Next too */
+  .watch-primary-col {
+    display: contents;
+  }
 }
 
 /* ==========================================================================
@@ -2892,6 +2913,11 @@ html, body {
 
   .watch-scroll {
     overflow-y: auto;
+    padding: 20px 24px 48px;
+  }
+
+  .watch-secondary-col {
+    padding: 0;
   }
 
   .watch-meta {
@@ -2914,6 +2940,7 @@ html, body {
 
   .watch-details-row {
     display: flex;
+    flex-direction: row;
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
@@ -2954,6 +2981,7 @@ html, body {
     flex-wrap: wrap;
     gap: 8px;
     padding: 0;
+    margin: 0;
   }
 
   .action-pill {
@@ -3106,6 +3134,11 @@ html, body {
 @media (min-width: 1024px) {
   #mainFeed {
     padding: 28px 36px 60px;
+  }
+
+  /* Layout below carries its own padding at this width */
+  .watch-scroll {
+    padding: 0;
   }
 
   /* Two-Column Watch Page (Player + Up Next) */
