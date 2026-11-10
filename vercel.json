@@ -8,6 +8,10 @@
     {
       "source": "/api/search",
       "destination": "/api/search.js"
+    },
+    {
+      "source": "/api/stream",
+      "destination": "/api/stream.js"
     }
   ],
   "headers": [

@@ -41,7 +41,7 @@
   </script>
 
   <!-- Cache-Busted Stylesheet to guarantee fresh load on iPhone -->
-  <link rel="stylesheet" href="/style.css?v=7.0">
+  <link rel="stylesheet" href="/style.css?v=8.0">
 </head>
 <body>
   <!-- Safe Area Wrapper for iPhone Notch & Home Indicator -->
@@ -215,15 +215,49 @@
         <!-- Pure Audio Element (for seamless Screen-off / Background Mode) -->
         <audio 
           id="mainAudio" 
-          preload="metadata"
+          preload="auto"
+          playsinline
         ></audio>
 
         <!-- Audio Mode Visualizer Screen (Active in Screen-Off / Audio Only Mode) -->
         <div id="audioModeScreen" class="audio-mode-screen hidden">
-          <div class="vinyl-record">
-            <img id="audioModeThumb" src="" alt="Album Artwork" class="vinyl-art">
+          <div class="vinyl-wrapper">
+            <div class="vinyl-record" id="vinylRecord">
+              <img id="audioModeThumb" src="" alt="Album Artwork" class="vinyl-art">
+            </div>
+            <div class="audio-wave-bars">
+              <span></span><span></span><span></span><span></span><span></span>
+            </div>
           </div>
-          <div class="audio-badge">🎧 Audio Mode Active (Screen-Off Friendly)</div>
+          <div class="audio-badge" id="audioModeBadge">🎧 Background Audio Active (Screen-Off Ready)</div>
+
+          <!-- In-player Audio Controls -->
+          <div class="audio-player-controls">
+            <div class="audio-scrubber-row">
+              <span id="audioCurrentTime" class="audio-time">0:00</span>
+              <input type="range" id="audioScrubber" class="audio-scrubber" min="0" max="100" value="0" step="0.5">
+              <span id="audioDuration" class="audio-time">0:00</span>
+            </div>
+            <div class="audio-btns-row">
+              <button id="audioRewindBtn" class="audio-ctrl-btn" title="Rewind 10s" aria-label="Rewind 10s">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                  <path d="M12.5 8c-2.65 0-5.05 1-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.2 3.16-1.98 5.12-1.98 3.77 0 6.94 2.61 7.7 6.1l2.43-.8C21.6 11.2 17.5 8 12.5 8z"/>
+                </svg>
+                <span class="ctrl-subtext">-10s</span>
+              </button>
+              <button id="audioPlayBtn" class="audio-ctrl-btn-play" title="Play/Pause" aria-label="Play/Pause">
+                <svg id="audioPlayIcon" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                  <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                </svg>
+              </button>
+              <button id="audioForwardBtn" class="audio-ctrl-btn" title="Forward 10s" aria-label="Forward 10s">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                  <path d="M11.5 8c2.65 0 5.05 1 6.9 2.6L22 7v9h-9l3.62-3.62c-1.39-1.2-3.16-1.98-5.12-1.98-3.77 0-6.94 2.61-7.7 6.1l-2.43-.8C2.4 11.2 6.5 8 11.5 8z"/>
+                </svg>
+                <span class="ctrl-subtext">+10s</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -358,6 +392,15 @@
           </div>
 
           <div class="setting-group">
+            <label class="setting-title">Screen-Off Background Play</label>
+            <p class="setting-desc">Automatically keep audio playing when screen locks or tab is hidden</p>
+            <label class="switch">
+              <input type="checkbox" id="backgroundAudioToggle" checked>
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <div class="setting-group">
             <label class="setting-title">iPhone Installation Guide (PWA)</label>
             <ol class="ios-guide-steps">
               <li>Open this site in <strong>Safari</strong> on your iPhone.</li>
@@ -376,8 +419,8 @@
 
   </div>
 
-  <script src="/player.js?v=7.1"></script>
-  <script src="/app.js?v=7.1"></script>
+  <script src="/player.js?v=8.0"></script>
+  <script src="/app.js?v=8.0"></script>
   <script>
     // Register & Force Update PWA Service Worker
     if ('serviceWorker' in navigator) {

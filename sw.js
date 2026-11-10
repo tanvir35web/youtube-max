@@ -1,4 +1,4 @@
-const CACHE_NAME = 'yt-max-v7-1';
+const CACHE_NAME = 'yt-max-v8-0';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -24,8 +24,9 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Pass-through for video media streaming
+  // Pass-through for video/audio media streaming
   if (
+    url.pathname.startsWith('/api/stream') ||
     url.hostname.includes('googlevideo') ||
     url.hostname.includes('youtube') ||
     event.request.destination === 'video' ||

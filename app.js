@@ -91,6 +91,39 @@ class App {
       } catch (e) {}
     });
 
+    // "Screen-Off Background Play" setting
+    this.backgroundAudioToggle = document.getElementById('backgroundAudioToggle');
+    if (this.backgroundAudioToggle) {
+      let bgOn = true;
+      try {
+        bgOn = localStorage.getItem('ytmax_bg_audio') !== 'off';
+      } catch (e) {}
+      this.backgroundAudioToggle.checked = bgOn;
+      this.backgroundAudioToggle.addEventListener('change', () => {
+        try {
+          localStorage.setItem('ytmax_bg_audio', this.backgroundAudioToggle.checked ? 'on' : 'off');
+          window.showToast(this.backgroundAudioToggle.checked ? 'Screen-Off Playback: Enabled' : 'Screen-Off Playback: Disabled');
+        } catch (e) {}
+      });
+    }
+
+    // Default Quality / Audio-Only selection
+    this.defaultQualitySelect = document.getElementById('defaultQualitySelect');
+    if (this.defaultQualitySelect) {
+      try {
+        const savedQ = localStorage.getItem('ytmax_default_quality');
+        if (savedQ) this.defaultQualitySelect.value = savedQ;
+      } catch (e) {}
+      this.defaultQualitySelect.addEventListener('change', () => {
+        try {
+          localStorage.setItem('ytmax_default_quality', this.defaultQualitySelect.value);
+          if (this.defaultQualitySelect.value === 'audio') {
+            window.showToast('🎧 Audio Only default mode enabled');
+          }
+        } catch (e) {}
+      });
+    }
+
     // When a video finishes, play the first "Up Next" video if autoplay is on
     this.player.onVideoEnded = () => {
       if (this.autoplayToggle.checked) this.playNextRelatedVideo();

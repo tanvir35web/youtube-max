@@ -9,6 +9,8 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { URL } = require('url');
+const handleStream = require('./api/stream');
+const { getAudioInfo } = require('./api/stream');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = __dirname;
@@ -156,6 +158,36 @@ const server = http.createServer(async (req, res) => {
       const videos = await searchInnerTube(query);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(videos));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
+  // API Direct Native Audio Stream Endpoint (100% Screen-Off & Background Play)
+  if (pathname === '/api/stream') {
+    return handleStream(req, res);
+  }
+
+  // API Audio Metadata Info Endpoint
+  if (pathname === '/api/audio-info') {
+    const videoId = parsedUrl.searchParams.get('id') || parsedUrl.searchParams.get('v');
+    if (!videoId) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Missing video id' }));
+      return;
+    }
+    try {
+      const info = await getAudioInfo(videoId);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        id: videoId,
+        title: info.title,
+        duration: info.duration,
+        mimeType: info.mimeType,
+        contentLength: info.contentLength
+      }));
     } catch (err) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: err.message }));

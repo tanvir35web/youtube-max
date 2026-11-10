@@ -484,6 +484,12 @@ html, body {
   box-sizing: content-box;
   flex-shrink: 0;
   z-index: 10;
+  transition: min-height 0.2s ease;
+}
+
+.player-container.audio-active {
+  aspect-ratio: auto;
+  min-height: 255px;
 }
 
 .player-iframe {
@@ -525,25 +531,34 @@ html, body {
   left: 0;
   width: 100%;
   height: 100%;
-  background: radial-gradient(circle, #222 0%, #0d0d0d 100%);
+  background: radial-gradient(circle at center, #1f1f1f 0%, #0a0a0a 100%);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 10px;
+  padding: 12px 16px;
+  box-sizing: border-box;
   z-index: 15;
 }
 
-.vinyl-record {
-  width: 110px;
-  height: 110px;
-  border-radius: 50%;
-  background: #111;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.8), 0 0 0 6px #1a1a1a;
+.vinyl-wrapper {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: rotateVinyl 12s linear infinite;
+}
+
+.vinyl-record {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: repeating-radial-gradient(circle, #1a1a1a, #1a1a1a 3px, #111 4px, #111 6px);
+  box-shadow: 0 0 25px rgba(0, 0, 0, 0.9), 0 0 0 4px #262626;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: rotateVinyl 10s linear infinite;
 }
 
 @keyframes rotateVinyl {
@@ -552,20 +567,161 @@ html, body {
 }
 
 .vinyl-art {
-  width: 54px;
-  height: 54px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid #ff0000;
+  box-shadow: 0 0 8px rgba(0,0,0,0.6);
+}
+
+/* Animated Equalizer Wave Bars */
+.audio-wave-bars {
+  position: absolute;
+  right: -36px;
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 30px;
+}
+
+.audio-wave-bars span {
+  width: 3px;
+  height: 100%;
+  background: #ff0000;
+  border-radius: 2px;
+  animation: eqPulse 1s ease-in-out infinite alternate;
+}
+
+.audio-wave-bars span:nth-child(1) { height: 40%; animation-delay: 0.1s; }
+.audio-wave-bars span:nth-child(2) { height: 90%; animation-delay: 0.25s; }
+.audio-wave-bars span:nth-child(3) { height: 60%; animation-delay: 0.4s; }
+.audio-wave-bars span:nth-child(4) { height: 100%; animation-delay: 0.15s; }
+.audio-wave-bars span:nth-child(5) { height: 50%; animation-delay: 0.3s; }
+
+@keyframes eqPulse {
+  0% { transform: scaleY(0.3); opacity: 0.6; }
+  100% { transform: scaleY(1); opacity: 1; }
 }
 
 .audio-badge {
   font-size: 11px;
-  background: rgba(255, 255, 255, 0.15);
-  color: #fff;
-  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #4ade80;
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  padding: 3px 10px;
   border-radius: 12px;
   font-weight: 500;
+  letter-spacing: 0.2px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Audio Player Interactive Controls */
+.audio-player-controls {
+  width: 100%;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.audio-scrubber-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.audio-time {
+  font-size: 11px;
+  color: var(--text-sub);
+  min-width: 32px;
+  font-variant-numeric: tabular-nums;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.audio-scrubber {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.audio-scrubber::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ff0000;
+  cursor: pointer;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+}
+
+.audio-btns-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+}
+
+.audio-ctrl-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: #fff;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.1s, background 0.15s;
+}
+
+.audio-ctrl-btn:active {
+  transform: scale(0.92);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.ctrl-subtext {
+  font-size: 8px;
+  font-weight: 700;
+  margin-top: -2px;
+  letter-spacing: -0.5px;
+}
+
+.audio-ctrl-btn-play {
+  background: #ff0000;
+  border: none;
+  color: #fff;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 3px 12px rgba(255, 0, 0, 0.4);
+  transition: transform 0.1s;
+}
+
+.audio-ctrl-btn-play:active {
+  transform: scale(0.92);
+}
+
+.action-pill.active {
+  background: #ff0000 !important;
+  color: #fff !important;
+  box-shadow: 0 0 12px rgba(255, 0, 0, 0.45);
 }
 
 /* Watch Content Scroll Area */

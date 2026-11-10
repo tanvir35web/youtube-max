@@ -1,71 +1,271 @@
 /**
- * YouTube Max - Player Engine (iOS PWA Background Play & Ad-Free Streaming)
+ * YouTube Max - Player Engine
+ * Supports True Screen-Off Audio Playback via Native HTML5 Audio Streaming & MediaSession API
  */
 
-// iOS Silent Audio Data URI for keeping background audio session active on Lock Screen
-const SILENT_AUDIO = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
-
-// Origins the embed is served from; messages from anywhere else are ignored.
 const EMBED_ORIGIN = 'https://www.youtube-nocookie.com';
 const TRUSTED_PLAYER_ORIGINS = [EMBED_ORIGIN, 'https://www.youtube.com'];
+const YT_STATE = { ENDED: 0, PLAYING: 1, PAUSED: 2, BUFFERING: 3 };
 
-// YouTube player states reported over postMessage
-const YT_STATE = { ENDED: 0, PLAYING: 1, PAUSED: 2 };
+function formatTime(seconds) {
+  if (!seconds || isNaN(seconds) || seconds < 0) return '0:00';
+  const sec = Math.floor(seconds);
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  if (m >= 60) {
+    const h = Math.floor(m / 60);
+    const remM = m % 60;
+    return `${h}:${remM < 10 ? '0' : ''}${remM}:${s < 10 ? '0' : ''}${s}`;
+  }
+  return `${m}:${s < 10 ? '0' : ''}${s}`;
+}
 
 class YouTubePlayer {
   constructor() {
+    this.playerContainer = document.getElementById('playerContainer');
     this.iframe = document.getElementById('playerIframe');
     this.audioEl = document.getElementById('mainAudio');
     this.audioModeScreen = document.getElementById('audioModeScreen');
     this.audioModeThumb = document.getElementById('audioModeThumb');
     this.audioModeBtn = document.getElementById('toggleAudioModeBtn');
     this.audioModeText = document.getElementById('audioModeText');
+    this.audioBadge = document.getElementById('audioModeBadge');
+    this.vinylRecord = document.getElementById('vinylRecord');
     this.modal = document.getElementById('watchModal');
     this.closeWatchBtn = document.getElementById('closeWatchBtn');
+
+    // Audio in-player controls
+    this.audioScrubber = document.getElementById('audioScrubber');
+    this.audioCurrentTime = document.getElementById('audioCurrentTime');
+    this.audioDuration = document.getElementById('audioDuration');
+    this.audioPlayBtn = document.getElementById('audioPlayBtn');
+    this.audioPlayIcon = document.getElementById('audioPlayIcon');
+    this.audioRewindBtn = document.getElementById('audioRewindBtn');
+    this.audioForwardBtn = document.getElementById('audioForwardBtn');
 
     this.currentVideoData = null;
     this.isAudioMode = false;
     this.isPlaying = false;
-    this.onNextTrackCallback = null;
-    this.onVideoEnded = null;
+    this.isScrubbing = false;
+    this.currentPosition = 0;
+    this.videoDuration = 0;
+    this.wasAutoSwitched = false;
     this.lastPlayerState = null;
     this.isMuted = true;
     this.unmuteCheckTimer = null;
 
+    this.onNextTrackCallback = null;
+    this.onVideoEnded = null;
+
     this.initEvents();
+    this.initAudioEvents();
     this.initEmbedBridge();
     this.initMediaSession();
   }
 
   initEvents() {
     // Minimize Watch Page
-    this.closeWatchBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.minimizePlayer();
-    });
+    if (this.closeWatchBtn) {
+      this.closeWatchBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.minimizePlayer();
+      });
+    }
 
-    // Toggle Audio-Only Mode (Screen-Off Friendly)
-    this.audioModeBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.toggleAudioMode();
-    });
+    // Toggle Audio-Only Mode
+    if (this.audioModeBtn) {
+      this.audioModeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.toggleAudioMode();
+      });
+    }
 
-    // Prevent iOS Safari from killing playback on screen lock
-    document.addEventListener('visibilitychange', (e) => {
-      e.stopImmediatePropagation();
-      if (this.isPlaying && this.isAudioMode && this.audioEl.paused) {
-        this.audioEl.play().catch(() => { });
-      }
+    // Handle Phone Screen Off / Lock / App Background
+    document.addEventListener('visibilitychange', () => {
+      this.handleVisibilityChange();
     }, true);
   }
 
+  initAudioEvents() {
+    if (!this.audioEl) return;
+
+    // Track time updates & sync UI & MediaSession
+    this.audioEl.addEventListener('timeupdate', () => {
+      if (!this.isAudioMode && !this.wasAutoSwitched) return;
+
+      const cur = this.audioEl.currentTime || 0;
+      const dur = this.audioEl.duration || this.videoDuration || 0;
+      this.currentPosition = cur;
+
+      if (!this.isScrubbing && dur > 0) {
+        if (this.audioScrubber) {
+          this.audioScrubber.value = ((cur / dur) * 100).toFixed(1);
+        }
+        if (this.audioCurrentTime) this.audioCurrentTime.textContent = formatTime(cur);
+        if (this.audioDuration) this.audioDuration.textContent = formatTime(dur);
+      }
+
+      // Update iOS & Android Lock Screen scrubber
+      this.updateMediaSessionPosition(cur, dur);
+
+      // Prevent WebKit Natural End Audio Session closure bug on iOS
+      if (dur > 0 && (dur - cur) < 0.8 && (dur - cur) > 0) {
+        if (this.onVideoEnded && !this._transitionTriggered) {
+          this._transitionTriggered = true;
+          this.onVideoEnded();
+        }
+      }
+    });
+
+    this.audioEl.addEventListener('play', () => {
+      this.isPlaying = true;
+      this._transitionTriggered = false;
+      this.updatePlayStateUI(true);
+      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+      window.updateMiniPlayerState(true);
+    });
+
+    this.audioEl.addEventListener('pause', () => {
+      // If we are actively transitioning or scrubbing, ignore temporary pause
+      if (this.isAudioMode || this.wasAutoSwitched) {
+        this.isPlaying = false;
+        this.updatePlayStateUI(false);
+        if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+        window.updateMiniPlayerState(false);
+      }
+    });
+
+    this.audioEl.addEventListener('ended', () => {
+      this.isPlaying = false;
+      this.updatePlayStateUI(false);
+      if (this.onVideoEnded && !this._transitionTriggered) {
+        this._transitionTriggered = true;
+        this.onVideoEnded();
+      }
+    });
+
+    this.audioEl.addEventListener('error', (e) => {
+      console.warn('Audio element error:', e);
+      if (this.isAudioMode) {
+        window.showToast('Audio buffering error. Retrying...');
+        setTimeout(() => {
+          if (this.isAudioMode && this.currentVideoData) {
+            this.audioEl.load();
+            this.audioEl.play().catch(() => {});
+          }
+        }, 1500);
+      }
+    });
+
+    // Audio Screen Controls Interaction
+    if (this.audioPlayBtn) {
+      this.audioPlayBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.togglePlay();
+      });
+    }
+
+    if (this.audioRewindBtn) {
+      this.audioRewindBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.seekTo(Math.max(0, (this.audioEl.currentTime || this.currentPosition) - 10));
+      });
+    }
+
+    if (this.audioForwardBtn) {
+      this.audioForwardBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.seekTo((this.audioEl.currentTime || this.currentPosition) + 10);
+      });
+    }
+
+    if (this.audioScrubber) {
+      this.audioScrubber.addEventListener('input', () => {
+        this.isScrubbing = true;
+        const dur = this.audioEl.duration || this.videoDuration || 0;
+        const target = (this.audioScrubber.value / 100) * dur;
+        if (this.audioCurrentTime) this.audioCurrentTime.textContent = formatTime(target);
+      });
+
+      this.audioScrubber.addEventListener('change', () => {
+        const dur = this.audioEl.duration || this.videoDuration || 0;
+        const target = (this.audioScrubber.value / 100) * dur;
+        this.seekTo(target);
+        this.isScrubbing = false;
+      });
+    }
+  }
+
+  updatePlayStateUI(isPlaying) {
+    if (this.audioPlayIcon) {
+      this.audioPlayIcon.innerHTML = isPlaying
+        ? '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>' // Pause icon
+        : '<path d="M8 5v14l11-7z"/>'; // Play icon
+    }
+    if (this.vinylRecord) {
+      this.vinylRecord.style.animationPlayState = isPlaying ? 'running' : 'paused';
+    }
+    const waveBars = document.querySelector('.audio-wave-bars');
+    if (waveBars) {
+      waveBars.style.opacity = isPlaying ? '1' : '0.2';
+    }
+  }
+
   /**
-   * Two-way bridge with the YouTube embed (the same postMessage protocol the
-   * official IFrame API uses). Lets us detect when the video is ready,
-   * playing or finished.
+   * Automatic Screen-Off Background Handoff:
+   * When phone screen is locked or tab is hidden, switch playback to native HTML5 audio!
+   */
+  handleVisibilityChange() {
+    let backgroundEnabled = true;
+    try {
+      const stored = localStorage.getItem('ytmax_bg_audio');
+      if (stored === 'off') backgroundEnabled = false;
+    } catch (e) {}
+
+    if (document.hidden) {
+      // Screen was turned off / locked / app backgrounded
+      if (this.isPlaying && !this.isAudioMode && backgroundEnabled) {
+        this.wasAutoSwitched = true;
+        const resumePos = this.currentPosition || 0;
+
+        // Mute/pause iframe
+        this.sendCommand('pauseVideo');
+
+        // Hand off to native audio element
+        const streamUrl = `/api/stream?id=${encodeURIComponent(this.currentVideoData.videoId)}`;
+        if (this.audioEl.src !== window.location.origin + streamUrl && !this.audioEl.src.includes(streamUrl)) {
+          this.audioEl.src = streamUrl;
+        }
+
+        this.audioEl.currentTime = resumePos;
+        this.audioEl.play().catch((err) => {
+          console.warn('Auto background play failed:', err);
+        });
+
+        this.updateMediaSessionMetadata();
+      } else if (this.isAudioMode && this.isPlaying && this.audioEl.paused) {
+        // Keep Audio Mode going
+        this.audioEl.play().catch(() => {});
+      }
+    } else {
+      // Screen turned back on / app foregrounded
+      if (this.wasAutoSwitched) {
+        const syncedPos = this.audioEl.currentTime || this.currentPosition;
+        this.wasAutoSwitched = false;
+
+        // Sync iframe back to audio position
+        this.currentPosition = syncedPos;
+        this.audioEl.pause();
+        this.sendCommand('seekTo', [syncedPos, true]);
+        this.sendCommand('playVideo');
+      }
+    }
+  }
+
+  /**
+   * Two-way bridge with the YouTube embed
    */
   initEmbedBridge() {
-    // Once the iframe loads, ask it to start sending events to us.
     this.iframe.addEventListener('load', () => {
       if (!this.iframe.src) return;
       this.sendCommand(null, null, 'listening');
@@ -92,7 +292,14 @@ class YouTubePlayer {
       if (data.event === 'infoDelivery' && data.info) {
         if (typeof data.info.muted === 'boolean') this.isMuted = data.info.muted;
         if (typeof data.info.playerState === 'number') state = data.info.playerState;
+        if (typeof data.info.currentTime === 'number') {
+          this.currentPosition = data.info.currentTime;
+        }
+        if (typeof data.info.duration === 'number' && data.info.duration > 0) {
+          this.videoDuration = data.info.duration;
+        }
       }
+
       if (typeof state === 'number' && state !== this.lastPlayerState) {
         this.handleStateChange(state);
       }
@@ -104,38 +311,47 @@ class YouTubePlayer {
     const msg = event
       ? { event, id: 'ytmax-player', channel: 'widget' }
       : { event: 'command', func, args: args || [] };
-    this.iframe.contentWindow.postMessage(JSON.stringify(msg), EMBED_ORIGIN);
+    try {
+      this.iframe.contentWindow.postMessage(JSON.stringify(msg), EMBED_ORIGIN);
+    } catch (e) {}
   }
 
   onEmbedReady() {
-    // Video starts muted (the only autoplay iOS allows); try turning sound on.
+    if (this.isAudioMode) return;
     this.sendCommand('playVideo');
     this.sendCommand('unMute');
     this.sendCommand('setVolume', [100]);
 
     clearTimeout(this.unmuteCheckTimer);
     this.unmuteCheckTimer = setTimeout(() => {
-      if (this.isMuted) {
-        // iOS blocked the unmute; make sure the video keeps playing silently.
+      if (this.isMuted && !this.isAudioMode) {
         this.sendCommand('playVideo');
-        window.showToast('🔇 Tap the video to turn on sound');
       }
-    }, 1500);
+    }, 1200);
   }
 
   handleStateChange(state) {
     this.lastPlayerState = state;
     if (state === YT_STATE.PLAYING) {
       this.isPlaying = true;
+      this._transitionTriggered = false;
+      this.updatePlayStateUI(true);
       if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
       window.updateMiniPlayerState(true);
     } else if (state === YT_STATE.PAUSED) {
-      this.isPlaying = false;
-      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
-      window.updateMiniPlayerState(false);
+      if (!this.wasAutoSwitched) {
+        this.isPlaying = false;
+        this.updatePlayStateUI(false);
+        if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+        window.updateMiniPlayerState(false);
+      }
     } else if (state === YT_STATE.ENDED) {
       this.isPlaying = false;
-      if (this.onVideoEnded) this.onVideoEnded();
+      this.updatePlayStateUI(false);
+      if (this.onVideoEnded && !this._transitionTriggered) {
+        this._transitionTriggered = true;
+        this.onVideoEnded();
+      }
     }
   }
 
@@ -151,15 +367,31 @@ class YouTubePlayer {
         this.pause();
       });
 
+      navigator.mediaSession.setActionHandler('seekto', (details) => {
+        if (details.seekTime !== undefined) {
+          this.seekTo(details.seekTime);
+        }
+      });
+
+      navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+        const step = details.seekOffset || 10;
+        this.seekTo(Math.max(0, (this.audioEl.currentTime || this.currentPosition) - step));
+      });
+
+      navigator.mediaSession.setActionHandler('seekforward', (details) => {
+        const step = details.seekOffset || 10;
+        this.seekTo((this.audioEl.currentTime || this.currentPosition) + step);
+      });
+
       navigator.mediaSession.setActionHandler('previoustrack', () => {
-        if (this.audioEl.currentTime) this.audioEl.currentTime = Math.max(0, this.audioEl.currentTime - 15);
+        this.seekTo(0);
       });
 
       navigator.mediaSession.setActionHandler('nexttrack', () => {
         if (this.onNextTrackCallback) this.onNextTrackCallback();
       });
     } catch (e) {
-      console.warn('MediaSession handler error:', e);
+      console.warn('MediaSession handler warning:', e);
     }
   }
 
@@ -167,96 +399,174 @@ class YouTubePlayer {
     if (!('mediaSession' in navigator) || !this.currentVideoData) return;
 
     const data = this.currentVideoData;
+    const thumb = data.thumbnail || '/icons/icon-512.png';
+
     navigator.mediaSession.metadata = new MediaMetadata({
       title: data.title || 'YouTube Video',
       artist: data.author || 'YouTube Max',
-      album: 'YouTube Max (Ad-Free)',
+      album: 'YouTube Max (Ad-Free Background)',
       artwork: [
-        {
-          src: data.thumbnail || '/icons/icon-512.png',
-          sizes: '512x512',
-          type: 'image/jpeg'
-        }
+        { src: thumb, sizes: '512x512', type: 'image/jpeg' },
+        { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+        { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' }
       ]
     });
     navigator.mediaSession.playbackState = 'playing';
   }
 
+  updateMediaSessionPosition(position, duration) {
+    if (!('mediaSession' in navigator) || !('setPositionState' in navigator.mediaSession)) return;
+    if (!isFinite(duration) || duration <= 0 || !isFinite(position) || position < 0) return;
+
+    try {
+      navigator.mediaSession.setPositionState({
+        duration: Math.max(duration, 1),
+        playbackRate: this.audioEl.playbackRate || 1,
+        position: Math.min(position, duration)
+      });
+    } catch (e) {}
+  }
+
   /**
-   * Load Video by ID
+   * Load Video by Data
    */
   loadVideo(videoData) {
     this.currentVideoData = videoData;
     this.isPlaying = true;
+    this.currentPosition = 0;
+    this._transitionTriggered = false;
 
-    // Set lock screen info for iOS
+    // Check if user set default mode to Audio Only
+    let preferAudio = false;
+    try {
+      const q = localStorage.getItem('ytmax_default_quality');
+      if (q === 'audio') preferAudio = true;
+    } catch (e) {}
+
     this.updateMediaSessionMetadata();
 
-    // Activate background audio session for iOS Lock Screen & Control Center
-    try {
-      this.audioEl.src = SILENT_AUDIO;
-      this.audioEl.loop = true;
-      this.audioEl.play().catch(() => {});
-    } catch(e) {}
+    // Prime the audio element in the user-gesture context so iOS allows background play
+    const streamUrl = `/api/stream?id=${encodeURIComponent(videoData.videoId)}`;
+    this.audioEl.src = streamUrl;
+    this.audioEl.currentTime = 0;
 
-    // Load clean YouTube Embed with zero cookies and inline iOS playback
-    // Parameter list:
-    // autoplay=1 (auto play)
-    // mute=1 (iOS only allows autoplay for muted video; sound is turned on in onEmbedReady)
-    // playsinline=1 (iOS Safari plays inside page, not forced full native player)
-    // enablejsapi=1 + origin (allows js api communication with this page)
-    // rel=0 (do not show unrelated external videos)
-    // modestbranding=1 (hides big YouTube logo)
-    // iv_load_policy=3 (disables video annotations)
+    if (this.audioModeThumb && videoData.thumbnail) {
+      this.audioModeThumb.src = videoData.thumbnail;
+    }
+
+    if (preferAudio || this.isAudioMode) {
+      this.activateAudioMode(0);
+    } else {
+      this.activateVideoMode();
+    }
+
+    window.updateMiniPlayerState(true);
+  }
+
+  activateAudioMode(startPos = 0) {
+    this.isAudioMode = true;
+    this.wasAutoSwitched = false;
+
+    // Stop iframe
+    this.sendCommand('pauseVideo');
+    this.iframe.classList.add('hidden');
+    this.audioModeScreen.classList.remove('hidden');
+    if (this.playerContainer) this.playerContainer.classList.add('audio-active');
+
+    if (this.audioModeBtn) {
+      this.audioModeBtn.classList.add('active');
+    }
+    if (this.audioModeText) {
+      this.audioModeText.textContent = 'Video Mode';
+    }
+
+    const streamUrl = `/api/stream?id=${encodeURIComponent(this.currentVideoData.videoId)}`;
+    if (!this.audioEl.src.includes(streamUrl)) {
+      this.audioEl.src = streamUrl;
+    }
+
+    this.audioEl.currentTime = startPos;
+    this.audioEl.play().catch((err) => {
+      console.warn('Native audio play error:', err);
+    });
+
+    this.updatePlayStateUI(true);
+    this.updateMediaSessionMetadata();
+    window.showToast('🎧 Audio Mode Active (Screen-Off Ready)');
+  }
+
+  activateVideoMode() {
+    this.isAudioMode = false;
+    this.wasAutoSwitched = false;
+
+    // Pause native audio
+    this.audioEl.pause();
+
+    this.audioModeScreen.classList.add('hidden');
+    this.iframe.classList.remove('hidden');
+    if (this.playerContainer) this.playerContainer.classList.remove('audio-active');
+
+    if (this.audioModeBtn) {
+      this.audioModeBtn.classList.remove('active');
+    }
+    if (this.audioModeText) {
+      this.audioModeText.textContent = 'Audio Mode';
+    }
+
     const origin = encodeURIComponent(window.location.origin);
-    const embedUrl = `${EMBED_ORIGIN}/embed/${encodeURIComponent(videoData.videoId)}?autoplay=1&mute=1&playsinline=1&enablejsapi=1&origin=${origin}&rel=0&modestbranding=1&iv_load_policy=3`;
+    const embedUrl = `${EMBED_ORIGIN}/embed/${encodeURIComponent(this.currentVideoData.videoId)}?autoplay=1&mute=1&playsinline=1&enablejsapi=1&origin=${origin}&rel=0&modestbranding=1&iv_load_policy=3`;
 
     this.lastPlayerState = null;
     this.isMuted = true;
     clearTimeout(this.unmuteCheckTimer);
     this.iframe.src = embedUrl;
-    this.iframe.classList.remove('hidden');
-    this.audioModeScreen.classList.add('hidden');
-    this.isAudioMode = false;
-    this.audioModeBtn.classList.remove('active');
-    this.audioModeText.textContent = 'Audio Mode';
 
-    window.updateMiniPlayerState(true);
+    this.updatePlayStateUI(true);
   }
 
   toggleAudioMode() {
-    this.isAudioMode = !this.isAudioMode;
+    if (!this.currentVideoData) return;
 
     if (this.isAudioMode) {
-      // Audio-Only Screen-Off Mode
-      this.audioModeScreen.classList.remove('hidden');
-      this.iframe.classList.add('hidden');
-      this.audioModeBtn.classList.add('active');
-      this.audioModeText.textContent = 'Video Mode';
-
-      if (this.currentVideoData?.thumbnail) {
-        this.audioModeThumb.src = this.currentVideoData.thumbnail;
-      }
-
-      // Activate audio element for lock-screen persistence
-      this.updateMediaSessionMetadata();
-      window.showToast('🎧 Audio Mode On (Lock Screen Ready)');
+      // Switch to Video Mode
+      const currentPos = this.audioEl.currentTime || this.currentPosition;
+      this.activateVideoMode();
+      this.sendCommand('seekTo', [currentPos, true]);
+      window.showToast('🎬 Video Mode Active');
     } else {
-      // Video Mode
-      this.audioModeScreen.classList.add('hidden');
-      this.iframe.classList.remove('hidden');
-      this.audioModeBtn.classList.remove('active');
-      this.audioModeText.textContent = 'Audio Mode';
-      window.showToast('🎬 Video Mode On');
+      // Switch to Audio Mode
+      const currentPos = this.currentPosition || 0;
+      this.activateAudioMode(currentPos);
     }
+  }
+
+  seekTo(seconds) {
+    const s = Math.max(0, seconds);
+    this.currentPosition = s;
+
+    if (this.isAudioMode || this.wasAutoSwitched) {
+      if (this.audioEl) {
+        this.audioEl.currentTime = s;
+        if (this.audioEl.paused && this.isPlaying) {
+          this.audioEl.play().catch(() => {});
+        }
+      }
+    } else {
+      this.sendCommand('seekTo', [s, true]);
+      if (this.audioEl) this.audioEl.currentTime = s;
+    }
+
+    if (this.audioCurrentTime) this.audioCurrentTime.textContent = formatTime(s);
   }
 
   play() {
     this.isPlaying = true;
-    this.sendCommand('playVideo');
-    if (this.isAudioMode) {
-      this.audioEl.play().catch(() => { });
+    if (this.isAudioMode || this.wasAutoSwitched) {
+      this.audioEl.play().catch(() => {});
+    } else {
+      this.sendCommand('playVideo');
     }
+    this.updatePlayStateUI(true);
     if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
     window.updateMiniPlayerState(true);
   }
@@ -265,6 +575,7 @@ class YouTubePlayer {
     this.isPlaying = false;
     this.sendCommand('pauseVideo');
     this.audioEl.pause();
+    this.updatePlayStateUI(false);
     if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
     window.updateMiniPlayerState(false);
   }
