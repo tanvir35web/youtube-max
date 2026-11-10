@@ -2,6 +2,9 @@
  * YouTube Max - Player Engine (iOS PWA Background Play & Ad-Free Streaming)
  */
 
+// iOS Silent Audio Data URI for keeping background audio session active on Lock Screen
+const SILENT_AUDIO = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+
 class YouTubePlayer {
   constructor() {
     this.iframe = document.getElementById('playerIframe');
@@ -96,6 +99,13 @@ class YouTubePlayer {
 
     // Set lock screen info for iOS
     this.updateMediaSessionMetadata();
+
+    // Activate background audio session for iOS Lock Screen & Control Center
+    try {
+      this.audioEl.src = SILENT_AUDIO;
+      this.audioEl.loop = true;
+      this.audioEl.play().catch(() => {});
+    } catch(e) {}
 
     // Load clean YouTube Embed with zero cookies and inline iOS playback
     // Parameter list:
