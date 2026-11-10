@@ -39,6 +39,8 @@ input, textarea {
 html, body {
   width: 100%;
   height: 100%;
+  height: var(--app-height, 100vh);
+  min-height: -webkit-fill-available;
   margin: 0;
   padding: 0;
   background-color: var(--bg-color);
@@ -48,12 +50,19 @@ html, body {
   touch-action: manipulation;
 }
 
+/* Pinned to all four screen edges so iOS standalone mode cannot leave a gap
+   under the status bar or above the home indicator. */
 #app {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   width: 100%;
   height: 100%;
+  height: var(--app-height, 100dvh);
   display: flex;
   flex-direction: column;
-  position: relative;
   overflow: hidden;
   background-color: var(--bg-color);
 }
@@ -450,7 +459,8 @@ html, body {
   left: 0;
   width: 100vw;
   height: 100%;
-  height: 100dvh;
+  height: var(--app-height, 100dvh);
+  bottom: 0;
   background: #0f0f0f;
   z-index: 100;
   display: flex;
@@ -779,7 +789,7 @@ html, body {
   left: 0;
   width: 100vw;
   height: 100%;
-  height: 100dvh;
+  height: var(--app-height, 100dvh);
   background: rgba(0, 0, 0, 0.7);
   display: flex;
   align-items: flex-end;

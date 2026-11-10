@@ -1,4 +1,4 @@
-const CACHE_NAME = 'yt-max-v6';
+const CACHE_NAME = 'yt-max-v7';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
