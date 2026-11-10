@@ -10,9 +10,11 @@ class App {
     this.currentRelatedVideos = [];
     this.savedVideos = JSON.parse(localStorage.getItem('ytmax_saved') || '[]');
     this.historyVideos = JSON.parse(localStorage.getItem('ytmax_history') || '[]');
+    this.currentUser = JSON.parse(localStorage.getItem('ytmax_user') || 'null');
 
     this.initElements();
     this.initPlayer();
+    this.initAuth();
     this.initEvents();
     this.loadFeed('trending');
     this.checkStandaloneMode();
@@ -72,6 +74,37 @@ class App {
     this.savedVideosList = document.getElementById('savedVideosList');
     this.historyVideosList = document.getElementById('historyVideosList');
     this.clearHistoryBtn = document.getElementById('clearHistoryBtn');
+
+    // Google Auth Elements
+    this.userProfileBtn = document.getElementById('userProfileBtn');
+    this.userAvatarPlaceholder = document.getElementById('userAvatarPlaceholder');
+    this.userAvatarImg = document.getElementById('userAvatarImg');
+
+    this.authModal = document.getElementById('authModal');
+    this.closeAuthBtn = document.getElementById('closeAuthBtn');
+    this.googleDirectSignInBtn = document.getElementById('googleDirectSignInBtn');
+
+    this.libraryAuthCard = document.getElementById('libraryAuthCard');
+    this.authLoggedOutView = document.getElementById('authLoggedOutView');
+    this.authLoggedInView = document.getElementById('authLoggedInView');
+    this.librarySignInBtn = document.getElementById('librarySignInBtn');
+    this.libraryManageBtn = document.getElementById('libraryManageBtn');
+    this.libraryUserAvatar = document.getElementById('libraryUserAvatar');
+    this.libraryUserName = document.getElementById('libraryUserName');
+    this.libraryUserEmail = document.getElementById('libraryUserEmail');
+
+    this.accountModal = document.getElementById('accountModal');
+    this.closeAccountBtn = document.getElementById('closeAccountBtn');
+    this.accountModalAvatar = document.getElementById('accountModalAvatar');
+    this.accountModalName = document.getElementById('accountModalName');
+    this.accountModalEmail = document.getElementById('accountModalEmail');
+    this.accountSavedCount = document.getElementById('accountSavedCount');
+    this.accountHistoryCount = document.getElementById('accountHistoryCount');
+    this.switchAccountBtn = document.getElementById('switchAccountBtn');
+    this.signOutAccountBtn = document.getElementById('signOutAccountBtn');
+
+    this.googleClientIdInput = document.getElementById('googleClientIdInput');
+    this.saveGoogleClientIdBtn = document.getElementById('saveGoogleClientIdBtn');
   }
 
   initPlayer() {
@@ -128,6 +161,266 @@ class App {
     this.player.onVideoEnded = () => {
       if (this.autoplayToggle.checked) this.playNextRelatedVideo();
     };
+  }
+
+  // --------------------------------------------------------------------------
+  // Google Authentication & User Profile Management
+  // --------------------------------------------------------------------------
+  initAuth() {
+    this.renderUserUI();
+    this.initGoogleIdentity();
+
+    // User profile button in header
+    if (this.userProfileBtn) {
+      this.userProfileBtn.addEventListener('click', () => {
+        if (this.currentUser) {
+          this.openAccountModal();
+        } else {
+          this.openAuthModal();
+        }
+      });
+    }
+
+    // Library card buttons
+    if (this.librarySignInBtn) {
+      this.librarySignInBtn.addEventListener('click', () => {
+        this.openAuthModal();
+      });
+    }
+
+    if (this.libraryManageBtn) {
+      this.libraryManageBtn.addEventListener('click', () => {
+        this.openAccountModal();
+      });
+    }
+
+    // Modal close buttons
+    if (this.closeAuthBtn) {
+      this.closeAuthBtn.addEventListener('click', () => {
+        this.authModal.classList.add('hidden');
+      });
+    }
+
+    if (this.closeAccountBtn) {
+      this.closeAccountBtn.addEventListener('click', () => {
+        this.accountModal.classList.add('hidden');
+      });
+    }
+
+    // Switch Account button
+    if (this.switchAccountBtn) {
+      this.switchAccountBtn.addEventListener('click', () => {
+        this.accountModal.classList.add('hidden');
+        this.openAuthModal();
+      });
+    }
+
+    // Sign Out button
+    if (this.signOutAccountBtn) {
+      this.signOutAccountBtn.addEventListener('click', () => {
+        this.signOutUser();
+      });
+    }
+
+    // Direct Google Connect button
+    if (this.googleDirectSignInBtn) {
+      this.googleDirectSignInBtn.addEventListener('click', () => {
+        this.promptGoogleSignIn();
+      });
+    }
+
+    // Google Client ID setting save
+    if (this.saveGoogleClientIdBtn) {
+      const savedId = localStorage.getItem('ytmax_google_client_id') || '';
+      if (this.googleClientIdInput) this.googleClientIdInput.value = savedId;
+      this.saveGoogleClientIdBtn.addEventListener('click', () => {
+        const val = (this.googleClientIdInput.value || '').trim();
+        if (val) {
+          localStorage.setItem('ytmax_google_client_id', val);
+          window.showToast('Google Client ID saved!');
+          this.initGoogleIdentity();
+        } else {
+          localStorage.removeItem('ytmax_google_client_id');
+          window.showToast('Google Client ID cleared');
+        }
+      });
+    }
+  }
+
+  renderUserUI() {
+    if (this.currentUser) {
+      // Header avatar
+      if (this.userAvatarPlaceholder) this.userAvatarPlaceholder.classList.add('hidden');
+      if (this.userAvatarImg) {
+        this.userAvatarImg.src = this.currentUser.picture;
+        this.userAvatarImg.classList.remove('hidden');
+      }
+
+      // Library Auth card
+      if (this.authLoggedOutView) this.authLoggedOutView.classList.add('hidden');
+      if (this.authLoggedInView) {
+        this.authLoggedInView.classList.remove('hidden');
+        if (this.libraryUserAvatar) this.libraryUserAvatar.src = this.currentUser.picture;
+        if (this.libraryUserName) this.libraryUserName.textContent = this.currentUser.name;
+        if (this.libraryUserEmail) this.libraryUserEmail.textContent = this.currentUser.email;
+      }
+
+      // Account modal details
+      if (this.accountModalAvatar) this.accountModalAvatar.src = this.currentUser.picture;
+      if (this.accountModalName) this.accountModalName.textContent = this.currentUser.name;
+      if (this.accountModalEmail) this.accountModalEmail.textContent = this.currentUser.email;
+      if (this.accountSavedCount) this.accountSavedCount.textContent = this.savedVideos.length;
+      if (this.accountHistoryCount) this.accountHistoryCount.textContent = this.historyVideos.length;
+    } else {
+      // Header avatar
+      if (this.userAvatarPlaceholder) this.userAvatarPlaceholder.classList.remove('hidden');
+      if (this.userAvatarImg) this.userAvatarImg.classList.add('hidden');
+
+      // Library Auth card
+      if (this.authLoggedOutView) this.authLoggedOutView.classList.remove('hidden');
+      if (this.authLoggedInView) this.authLoggedInView.classList.add('hidden');
+    }
+  }
+
+  loginUser(userProfile) {
+    this.currentUser = userProfile;
+    try {
+      localStorage.setItem('ytmax_user', JSON.stringify(userProfile));
+    } catch (e) {}
+    this.renderUserUI();
+    if (this.authModal) this.authModal.classList.add('hidden');
+    window.showToast(`Signed in as ${userProfile.name}!`);
+  }
+
+  signOutUser() {
+    const name = this.currentUser ? this.currentUser.name : 'Google';
+    this.currentUser = null;
+    try {
+      localStorage.removeItem('ytmax_user');
+      if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+        google.accounts.id.disableAutoSelect();
+      }
+    } catch (e) {}
+    this.renderUserUI();
+    if (this.accountModal) this.accountModal.classList.add('hidden');
+    window.showToast(`Signed out of ${name}`);
+  }
+
+  openAuthModal() {
+    if (this.accountModal) this.accountModal.classList.add('hidden');
+    if (this.authModal) this.authModal.classList.remove('hidden');
+  }
+
+  openAccountModal() {
+    if (this.authModal) this.authModal.classList.add('hidden');
+    if (this.accountSavedCount) this.accountSavedCount.textContent = this.savedVideos.length;
+    if (this.accountHistoryCount) this.accountHistoryCount.textContent = this.historyVideos.length;
+    if (this.accountModal) this.accountModal.classList.remove('hidden');
+  }
+
+  promptGoogleSignIn() {
+    // Check if official Google Identity One-Tap is available
+    if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+      const clientId = localStorage.getItem('ytmax_google_client_id');
+      if (clientId) {
+        try {
+          google.accounts.id.prompt((notification) => {
+            if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+              this.showCustomGoogleLoginPrompt();
+            }
+          });
+          return;
+        } catch (e) {}
+      }
+    }
+
+    this.showCustomGoogleLoginPrompt();
+  }
+
+  showCustomGoogleLoginPrompt() {
+    const email = prompt('Enter your Google Account email:\n(e.g., yourname@gmail.com)');
+    if (!email) return;
+
+    const trimmed = email.trim();
+    if (!trimmed.includes('@')) {
+      alert('Please enter a valid Google email address.');
+      return;
+    }
+
+    const defaultName = trimmed.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    const name = prompt('Enter your Display Name:', defaultName) || defaultName;
+
+    // High-resolution letter avatar styled like Google Material
+    const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=ea4335&color=fff&size=256&bold=true`;
+
+    this.loginUser({
+      id: 'g_' + Date.now(),
+      name: name,
+      email: trimmed,
+      picture: avatarUrl,
+      verified: true
+    });
+  }
+
+  initGoogleIdentity() {
+    const checkGsi = () => {
+      if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) {
+        return;
+      }
+
+      const clientId = localStorage.getItem('ytmax_google_client_id');
+      if (!clientId) return;
+
+      try {
+        google.accounts.id.initialize({
+          client_id: clientId,
+          callback: (response) => {
+            if (response && response.credential) {
+              const payload = this.parseJwt(response.credential);
+              if (payload) {
+                this.loginUser({
+                  id: payload.sub,
+                  name: payload.name || payload.given_name || 'Google User',
+                  email: payload.email,
+                  picture: payload.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(payload.name || 'User')}&background=ea4335&color=fff`,
+                  verified: payload.email_verified
+                });
+              }
+            }
+          },
+          auto_select: false,
+          cancel_on_tap_outside: true
+        });
+
+        const btnContainer = document.getElementById('g_id_signin');
+        if (btnContainer) {
+          google.accounts.id.renderButton(btnContainer, {
+            theme: 'filled_blue',
+            size: 'large',
+            shape: 'pill',
+            text: 'signin_with',
+            width: 280
+          });
+        }
+      } catch (err) {
+        console.warn('Google Identity Services init warning:', err);
+      }
+    };
+
+    setTimeout(checkGsi, 1000);
+  }
+
+  parseJwt(token) {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      return JSON.parse(jsonPayload);
+    } catch (e) {
+      return null;
+    }
   }
 
   initEvents() {

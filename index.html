@@ -15,6 +15,9 @@
   <!-- Standard Web Manifest -->
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#0f0f0f">
+
+  <!-- Google Identity Services (Sign In with Google) -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   
   <!-- Full-screen height fix: iOS standalone PWAs often report a short
        100%/100vh, leaving a gap at the bottom. Use the real screen height
@@ -41,7 +44,7 @@
   </script>
 
   <!-- Cache-Busted Stylesheet to guarantee fresh load on iPhone -->
-  <link rel="stylesheet" href="/style.css?v=8.0">
+  <link rel="stylesheet" href="/style.css?v=8.1">
 </head>
 <body>
   <!-- Safe Area Wrapper for iPhone Notch & Home Indicator -->
@@ -78,6 +81,16 @@
           <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
             <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84c-.24 0-.44.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
           </svg>
+        </button>
+
+        <!-- Google User Profile Button -->
+        <button id="userProfileBtn" class="icon-btn user-avatar-btn" title="Google Account" aria-label="Google Account">
+          <div id="userAvatarPlaceholder" class="avatar-placeholder">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+            </svg>
+          </div>
+          <img id="userAvatarImg" class="user-avatar-img hidden" alt="Google Profile">
         </button>
       </div>
     </header>
@@ -339,6 +352,39 @@
         <h2>Your Library</h2>
         <button id="clearHistoryBtn" class="btn-text">Clear History</button>
       </div>
+
+      <!-- Google Account Profile Card in Library -->
+      <div id="libraryAuthCard" class="library-auth-card">
+        <!-- Logged out state -->
+        <div id="authLoggedOutView" class="auth-card-content">
+          <div class="auth-icon-wrap">
+            <svg viewBox="0 0 48 48" width="28" height="28">
+              <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+              <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+              <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.79l7.97-6.2z"/>
+              <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+            </svg>
+          </div>
+          <div class="auth-card-text">
+            <h3>Google Account</h3>
+            <p>Sign in to sync your saved videos & watch history</p>
+          </div>
+          <button id="librarySignInBtn" class="btn-google-pill">Sign In</button>
+        </div>
+
+        <!-- Logged in state -->
+        <div id="authLoggedInView" class="auth-card-content hidden">
+          <img id="libraryUserAvatar" src="" alt="Avatar" class="library-user-avatar">
+          <div class="auth-card-text">
+            <div class="user-name-row">
+              <h3 id="libraryUserName">User Name</h3>
+              <span class="badge-google">Google</span>
+            </div>
+            <p id="libraryUserEmail">user@gmail.com</p>
+          </div>
+          <button id="libraryManageBtn" class="btn-outline-xs">Account</button>
+        </div>
+      </div>
       
       <div class="library-section">
         <h3>Saved Videos</h3>
@@ -401,6 +447,15 @@
           </div>
 
           <div class="setting-group">
+            <label class="setting-title">Google OAuth 2.0 Client ID (Optional)</label>
+            <p class="setting-desc">For official Google One-Tap sign-in, add your Google Cloud Web Client ID:</p>
+            <div class="setting-input-row">
+              <input type="text" id="googleClientIdInput" class="setting-text-input" placeholder="e.g. 123456-xxx.apps.googleusercontent.com">
+              <button id="saveGoogleClientIdBtn" class="btn-primary-sm">Save</button>
+            </div>
+          </div>
+
+          <div class="setting-group">
             <label class="setting-title">iPhone Installation Guide (PWA)</label>
             <ol class="ios-guide-steps">
               <li>Open this site in <strong>Safari</strong> on your iPhone.</li>
@@ -414,13 +469,92 @@
       </div>
     </div>
 
+    <!-- Google Sign-In Modal -->
+    <div id="authModal" class="modal-overlay hidden">
+      <div class="modal-box auth-modal-box">
+        <div class="modal-header">
+          <h3>Sign In</h3>
+          <button id="closeAuthBtn" class="icon-btn">✕</button>
+        </div>
+
+        <div class="modal-content auth-modal-content">
+          <div class="google-logo-badge">
+            <svg viewBox="0 0 48 48" width="44" height="44">
+              <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+              <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+              <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.79l7.97-6.2z"/>
+              <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+            </svg>
+          </div>
+
+          <h2 class="auth-title">Sign in with Google</h2>
+          <p class="auth-desc">Connect your Google account to sync your saved bookmarks, playlists, and watch history across all your devices.</p>
+
+          <!-- Official Google Identity Render Target -->
+          <div id="g_id_signin_wrap" class="g-signin-wrap">
+            <div id="g_id_signin"></div>
+          </div>
+
+          <!-- Direct Google Sign-In button -->
+          <button id="googleDirectSignInBtn" class="btn-google-large">
+            <svg viewBox="0 0 48 48" width="22" height="22">
+              <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+              <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+              <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.79l7.97-6.2z"/>
+              <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+            </svg>
+            <span>Continue with Google</span>
+          </button>
+
+          <p class="auth-footer-note">🔒 Private & Secure. Your data is saved locally on your device.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Google Account Details Modal -->
+    <div id="accountModal" class="modal-overlay hidden">
+      <div class="modal-box account-modal-box">
+        <div class="modal-header">
+          <h3>Your Account</h3>
+          <button id="closeAccountBtn" class="icon-btn">✕</button>
+        </div>
+        <div class="modal-content account-detail-content">
+          <div class="account-profile-header">
+            <img id="accountModalAvatar" src="" alt="Avatar" class="account-avatar-large">
+            <h3 id="accountModalName">User Name</h3>
+            <p id="accountModalEmail">user@gmail.com</p>
+            <div class="badge-google-verified">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="#34A853"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+              <span>Google Connected</span>
+            </div>
+          </div>
+
+          <div class="account-stats-row">
+            <div class="stat-box">
+              <span id="accountSavedCount" class="stat-num">0</span>
+              <span class="stat-label">Saved</span>
+            </div>
+            <div class="stat-box">
+              <span id="accountHistoryCount" class="stat-num">0</span>
+              <span class="stat-label">Watched</span>
+            </div>
+          </div>
+
+          <div class="account-actions">
+            <button id="switchAccountBtn" class="btn-outline-full">Switch Google Account</button>
+            <button id="signOutAccountBtn" class="btn-danger-full">Sign Out</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Toast Notification -->
     <div id="toast" class="toast hidden">Message</div>
 
   </div>
 
-  <script src="/player.js?v=8.0"></script>
-  <script src="/app.js?v=8.0"></script>
+  <script src="/player.js?v=8.1"></script>
+  <script src="/app.js?v=8.1"></script>
   <script>
     // Register & Force Update PWA Service Worker
     if ('serviceWorker' in navigator) {
