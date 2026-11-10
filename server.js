@@ -197,17 +197,30 @@ const server = http.createServer(async (req, res) => {
 
 const localIp = getLocalIp();
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log('====================================================');
-  console.log('  🚀 YouTube Max - iPhone PWA Server Running');
-  console.log('  🔥 Direct YouTube InnerTube Engine: Active (100% Reliable)');
-  console.log('====================================================');
-  console.log(`  📱 iPhone URL (Same Wi-Fi): http://${localIp}:${PORT}`);
-  console.log(`  💻 PC Local URL:           http://localhost:${PORT}`);
-  console.log('====================================================');
-  console.log('  Instructions:');
-  console.log(`  1. Open Safari on iPhone -> http://${localIp}:${PORT}`);
-  console.log('  2. Tap Share button -> "Add to Home Screen"');
-  console.log('  3. Enjoy Ad-Free YouTube with Background Play!');
-  console.log('====================================================');
-});
+function startServer(port) {
+  server.once('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.log(`⚠️  Port ${port} is in use, trying port ${port + 1}...`);
+      startServer(port + 1);
+    } else {
+      console.error('Server error:', err);
+    }
+  });
+
+  server.listen(port, '0.0.0.0', () => {
+    console.log('====================================================');
+    console.log('  🚀 YouTube Max - iPhone PWA Server Running');
+    console.log('  🔥 YouTube InnerTube Engine: Active (100% Reliable)');
+    console.log('====================================================');
+    console.log(`  📱 iPhone URL (Same Wi-Fi): http://${localIp}:${port}`);
+    console.log(`  💻 PC Local URL:           http://localhost:${port}`);
+    console.log('====================================================');
+    console.log('  Instructions:');
+    console.log(`  1. Open Safari on iPhone -> http://${localIp}:${port}`);
+    console.log('  2. Tap Share button -> "Add to Home Screen"');
+    console.log('  3. Enjoy Ad-Free YouTube with Background Play!');
+    console.log('====================================================');
+  });
+}
+
+startServer(PORT);

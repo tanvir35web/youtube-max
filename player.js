@@ -39,7 +39,7 @@ class YouTubePlayer {
     document.addEventListener('visibilitychange', (e) => {
       e.stopImmediatePropagation();
       if (this.isPlaying && this.isAudioMode && this.audioEl.paused) {
-        this.audioEl.play().catch(() => {});
+        this.audioEl.play().catch(() => { });
       }
     }, true);
   }
@@ -106,7 +106,7 @@ class YouTubePlayer {
     // modestbranding=1 (hides big YouTube logo)
     // iv_load_policy=3 (disables video annotations)
     const embedUrl = `https://www.youtube-nocookie.com/embed/${videoData.videoId}?autoplay=1&playsinline=1&enablejsapi=1&rel=0&modestbranding=1&iv_load_policy=3`;
-    
+
     this.iframe.src = embedUrl;
     this.iframe.classList.remove('hidden');
     this.audioModeScreen.classList.add('hidden');
@@ -150,7 +150,7 @@ class YouTubePlayer {
       this.iframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
     }
     if (this.isAudioMode) {
-      this.audioEl.play().catch(() => {});
+      this.audioEl.play().catch(() => { });
     }
     if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
     window.updateMiniPlayerState(true);
