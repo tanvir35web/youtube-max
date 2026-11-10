@@ -1,14 +1,16 @@
-const CACHE_NAME = 'yt-max-v8-6';
+const CACHE_NAME = 'yt-max-v9-5';
 const APP_SHELL_FILES = [
   '/',
   '/index.html',
-  '/style.css?v=8.6',
-  '/app.js?v=8.6',
-  '/player.js?v=8.6',
+  '/style.css?v=9.5',
+  '/app.js?v=9.5',
+  '/player.js?v=9.5',
   '/manifest.json',
+  '/favicon.ico',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
-  '/icons/apple-touch-icon.png'
+  '/icons/apple-touch-icon.png',
+  '/icons/og-image.png'
 ];
 
 self.addEventListener('install', (event) => {

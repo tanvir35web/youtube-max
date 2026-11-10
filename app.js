@@ -77,7 +77,11 @@ class OfflineDB {
 class App {
   constructor() {
     this.player = null;
-    this.activeTopic = 'trending';
+    let savedTopic = 'bangla';
+    try {
+      savedTopic = localStorage.getItem('ytmax_default_topic') || 'bangla';
+    } catch (e) {}
+    this.activeTopic = savedTopic;
     this.currentRelatedVideos = [];
     this.savedVideos = JSON.parse(localStorage.getItem('ytmax_saved') || '[]');
     this.historyVideos = JSON.parse(localStorage.getItem('ytmax_history') || '[]');
@@ -90,7 +94,8 @@ class App {
     this.initAuth();
     this.initEvents();
     this.initOfflineDownloads();
-    this.loadFeed('trending');
+    this.setActiveChip(this.activeTopic);
+    this.loadFeed(this.activeTopic);
     this.checkStandaloneMode();
   }
 
@@ -193,6 +198,7 @@ class App {
     this.downloadOptionsContainer = document.getElementById('downloadOptionsContainer');
     this.downloadProgressBox = document.getElementById('downloadProgressBox');
     this.downloadFallbackBox = document.getElementById('downloadFallbackBox');
+    this.fallbackDirectBtn = document.getElementById('fallbackDirectBtn');
     this.fallbackWebAudioBtn = document.getElementById('fallbackWebAudioBtn');
     this.fallbackWebVideoBtn = document.getElementById('fallbackWebVideoBtn');
     this.dlStatusText = document.getElementById('dlStatusText');
@@ -248,6 +254,25 @@ class App {
           if (this.defaultQualitySelect.value === 'audio') {
             window.showToast('🎧 Audio Only default mode enabled');
           }
+        } catch (e) {}
+      });
+    }
+
+    // Default Home Feed selection (Bangla default)
+    this.defaultTopicSelect = document.getElementById('defaultTopicSelect');
+    if (this.defaultTopicSelect) {
+      try {
+        const savedTopic = localStorage.getItem('ytmax_default_topic') || 'bangla';
+        this.defaultTopicSelect.value = savedTopic;
+      } catch (e) {}
+      this.defaultTopicSelect.addEventListener('change', () => {
+        try {
+          const selectedTopic = this.defaultTopicSelect.value;
+          localStorage.setItem('ytmax_default_topic', selectedTopic);
+          this.setActiveChip(selectedTopic);
+          this.loadFeed(selectedTopic);
+          const name = this.defaultTopicSelect.options[this.defaultTopicSelect.selectedIndex].text;
+          window.showToast(`Default feed set to ${name}`);
         } catch (e) {}
       });
     }
@@ -601,10 +626,8 @@ class App {
     this.categoryChips.addEventListener('click', (e) => {
       const chip = e.target.closest('.chip');
       if (!chip) return;
-      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-      chip.classList.add('active');
       const topic = chip.dataset.topic;
-      this.activeTopic = topic;
+      this.setActiveChip(topic);
       this.loadFeed(topic);
     });
 
@@ -700,11 +723,14 @@ class App {
     // Navigation Tabs
     this.navHome.addEventListener('click', () => {
       this.switchTab('home');
-      this.loadFeed('trending');
+      const defaultTopic = localStorage.getItem('ytmax_default_topic') || 'bangla';
+      this.setActiveChip(defaultTopic);
+      this.loadFeed(defaultTopic);
     });
 
     this.navTrending.addEventListener('click', () => {
       this.switchTab('home');
+      this.setActiveChip('trending');
       this.loadFeed('trending');
     });
 
@@ -726,9 +752,157 @@ class App {
       }
     });
 
-    // App Logo click -> scroll to top
+    // App Logo click -> switch to home & scroll to top
     document.getElementById('logoBtn').addEventListener('click', () => {
+      this.switchTab('home');
+      const defaultTopic = localStorage.getItem('ytmax_default_topic') || 'bangla';
+      this.setActiveChip(defaultTopic);
+      this.loadFeed(defaultTopic);
       document.getElementById('mainFeed').scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    // --------------------------------------------------------------------------
+    // Desktop Navigation & Global Keyboard Shortcuts
+    // --------------------------------------------------------------------------
+    // Desktop Sidebar Toggle
+    const menuToggleBtn = document.getElementById('menuToggleBtn');
+    if (menuToggleBtn) {
+      menuToggleBtn.addEventListener('click', () => {
+        const app = document.getElementById('app');
+        const isCollapsed = app.classList.toggle('sidebar-collapsed');
+        try {
+          localStorage.setItem('yt_sidebar_collapsed', isCollapsed ? 'true' : 'false');
+        } catch (e) {}
+      });
+
+      try {
+        if (localStorage.getItem('yt_sidebar_collapsed') === 'true') {
+          document.getElementById('app').classList.add('sidebar-collapsed');
+        }
+      } catch (e) {}
+    }
+
+    // Desktop Watch Top Bar Back & PiP Buttons
+    const closeWatchDesktopBtn = document.getElementById('closeWatchDesktopBtn');
+    if (closeWatchDesktopBtn) {
+      closeWatchDesktopBtn.addEventListener('click', () => {
+        this.player.minimizePlayer();
+      });
+    }
+
+    const minimizeToPipBtn = document.getElementById('minimizeToPipBtn');
+    if (minimizeToPipBtn) {
+      minimizeToPipBtn.addEventListener('click', () => {
+        this.player.minimizePlayer();
+      });
+    }
+
+    // Desktop Sidebar Quick Jump: Downloads
+    const navDownloads = document.getElementById('navDownloads');
+    if (navDownloads) {
+      navDownloads.addEventListener('click', () => {
+        this.switchTab('library');
+        this.renderLibrary();
+        setTimeout(() => {
+          const sec = document.getElementById('downloadsList');
+          if (sec) sec.scrollIntoView({ behavior: 'smooth' });
+        }, 60);
+      });
+    }
+
+    // Desktop Sidebar Quick Jump: Saved Videos
+    const navSaved = document.getElementById('navSaved');
+    if (navSaved) {
+      navSaved.addEventListener('click', () => {
+        this.switchTab('library');
+        this.renderLibrary();
+        setTimeout(() => {
+          const sec = document.getElementById('savedVideosList');
+          if (sec) sec.scrollIntoView({ behavior: 'smooth' });
+        }, 60);
+      });
+    }
+
+    // Desktop Sidebar Quick Jump: History
+    const navHistory = document.getElementById('navHistory');
+    if (navHistory) {
+      navHistory.addEventListener('click', () => {
+        this.switchTab('library');
+        this.renderLibrary();
+        setTimeout(() => {
+          const sec = document.getElementById('historyVideosList');
+          if (sec) sec.scrollIntoView({ behavior: 'smooth' });
+        }, 60);
+      });
+    }
+
+    // Desktop Sidebar Settings Button
+    const desktopSettingsNav = document.getElementById('desktopSettingsNav');
+    if (desktopSettingsNav) {
+      desktopSettingsNav.addEventListener('click', () => {
+        this.settingsModal.classList.remove('hidden');
+      });
+    }
+
+    // Desktop Sidebar Explore Topics
+    document.querySelectorAll('[data-explore]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const topic = btn.dataset.explore;
+        this.switchTab('home');
+        this.setActiveChip(topic);
+        this.loadFeed(topic);
+      });
+    });
+
+    // Desktop Global Keyboard Shortcuts
+    window.addEventListener('keydown', (e) => {
+      const tag = document.activeElement ? document.activeElement.tagName : '';
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag)) {
+        if (e.key === 'Escape') document.activeElement.blur();
+        return;
+      }
+
+      if (e.key === 'Escape') {
+        if (!this.settingsModal.classList.contains('hidden')) {
+          this.settingsModal.classList.add('hidden');
+        } else if (!this.authModal.classList.contains('hidden')) {
+          this.authModal.classList.add('hidden');
+        } else if (!this.accountModal.classList.contains('hidden')) {
+          this.accountModal.classList.add('hidden');
+        } else if (this.downloadModal && !this.downloadModal.classList.contains('hidden')) {
+          this.downloadModal.classList.add('hidden');
+        } else if (!this.watchModal.classList.contains('hidden')) {
+          this.player.minimizePlayer();
+        }
+      } else if (e.key === '/' && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        this.searchInput.focus();
+      } else if (e.key === ' ' || e.key === 'k' || e.key === 'K') {
+        if (!this.watchModal.classList.contains('hidden') || !this.miniPlayer.classList.contains('hidden')) {
+          e.preventDefault();
+          this.player.togglePlay();
+        }
+      } else if (e.key === 'm' || e.key === 'M') {
+        if (this.player.audioEl) {
+          this.player.audioEl.muted = !this.player.audioEl.muted;
+          window.showToast(this.player.audioEl.muted ? 'Audio Muted' : 'Audio Unmuted');
+        }
+      }
+    });
+  }
+
+  setActiveChip(topic) {
+    this.activeTopic = topic;
+    const chips = document.querySelectorAll('.chip');
+    chips.forEach(c => {
+      if (c.dataset.topic === topic) {
+        c.classList.add('active');
+        try {
+          c.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        } catch (e) {}
+      } else {
+        c.classList.remove('active');
+      }
     });
   }
 
@@ -851,6 +1025,8 @@ class App {
     const fallbackThumb = thumb || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
 
     this.watchTitle.textContent = title || 'Playing Video';
+    const desktopHeaderTitle = document.getElementById('watchDesktopHeaderTitle');
+    if (desktopHeaderTitle) desktopHeaderTitle.textContent = title || 'Now Playing';
     this.watchViews.textContent = 'Ad-Free Playback';
     this.watchDate.textContent = 'Ad Blocked ✓';
     this.channelName.textContent = author || 'YouTube';
@@ -1034,11 +1210,16 @@ class App {
     if (this.downloadFallbackBox) this.downloadFallbackBox.classList.add('hidden');
     if (this.downloadModal) this.downloadModal.classList.remove('hidden');
 
+    if (this.fallbackDirectBtn) {
+      const cleanName = (v.title || 'audio').replace(/[/\\?%*:|"<>]/g, '_').trim().substring(0, 70);
+      this.fallbackDirectBtn.href = `/api/download?id=${encodeURIComponent(v.videoId)}&type=audio`;
+      this.fallbackDirectBtn.setAttribute('download', `${cleanName}.m4a`);
+    }
     if (this.fallbackWebAudioBtn) {
-      this.fallbackWebAudioBtn.href = `https://10downloader.com/download?v=${encodeURIComponent(v.videoId)}`;
+      this.fallbackWebAudioBtn.href = `https://ssyoutube.com/watch?v=${encodeURIComponent(v.videoId)}`;
     }
     if (this.fallbackWebVideoBtn) {
-      this.fallbackWebVideoBtn.href = `https://10downloader.com/download?v=${encodeURIComponent(v.videoId)}`;
+      this.fallbackWebVideoBtn.href = `https://yt1s.com/en?q=https://www.youtube.com/watch?v=${encodeURIComponent(v.videoId)}`;
     }
   }
 
@@ -1151,19 +1332,24 @@ class App {
       }, 700);
     } catch (err) {
       console.error('Download error:', err);
-      if (this.dlStatusText) this.dlStatusText.textContent = 'Download failed on cloud server';
+      if (this.dlStatusText) this.dlStatusText.textContent = 'In-app stream restricted';
       if (this.downloadOptionsContainer) this.downloadOptionsContainer.classList.remove('hidden');
       if (this.downloadProgressBox) this.downloadProgressBox.classList.add('hidden');
       if (this.downloadFallbackBox) {
         this.downloadFallbackBox.classList.remove('hidden');
+        const cleanName = (video.title || 'media').replace(/[/\\?%*:|"<>]/g, '_').trim().substring(0, 70);
+        if (this.fallbackDirectBtn) {
+          this.fallbackDirectBtn.href = `/api/download?id=${encodeURIComponent(video.videoId)}&type=${type}`;
+          this.fallbackDirectBtn.setAttribute('download', `${cleanName}.${type === 'video' ? 'mp4' : 'm4a'}`);
+        }
         if (this.fallbackWebAudioBtn) {
-          this.fallbackWebAudioBtn.href = `https://10downloader.com/download?v=${encodeURIComponent(video.videoId)}`;
+          this.fallbackWebAudioBtn.href = `https://ssyoutube.com/watch?v=${encodeURIComponent(video.videoId)}`;
         }
         if (this.fallbackWebVideoBtn) {
-          this.fallbackWebVideoBtn.href = `https://10downloader.com/download?v=${encodeURIComponent(video.videoId)}`;
+          this.fallbackWebVideoBtn.href = `https://yt1s.com/en?q=https://www.youtube.com/watch?v=${encodeURIComponent(video.videoId)}`;
         }
       }
-      window.showToast('Server restricted: Use Web Mirror button to download');
+      window.showToast('Download restricted: Tap SaveFrom or Direct Download below');
     }
   }
 
@@ -1271,6 +1457,8 @@ class App {
     document.getElementById('watchScroll').scrollTo({ top: 0, behavior: 'instant' });
 
     this.watchTitle.textContent = record.title || 'Offline Video';
+    const desktopHeaderTitle = document.getElementById('watchDesktopHeaderTitle');
+    if (desktopHeaderTitle) desktopHeaderTitle.textContent = record.title || 'Offline Video';
     this.watchViews.textContent = '📶 Offline Local Playback';
     this.watchDate.textContent = 'Zero Internet ✓';
     this.channelName.textContent = record.author || 'Offline Media';

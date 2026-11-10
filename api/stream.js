@@ -111,67 +111,111 @@ function getInnerTubeVrMedia(videoId, type = 'audio') {
   });
 }
 
+const INVIDIOUS_INSTANCES = [
+  'yt.chocolatemoo53.com',
+  'invidious.jing.rocks',
+  'invidious.nerdvpn.de',
+  'yewtu.be'
+];
+
 /**
  * Fallback 2: Public Invidious API
  * Resolves streams for videos requiring special client signatures
  */
 function getInvidiousMedia(videoId, type = 'audio') {
   return new Promise((resolve) => {
-    const req = https.get(`https://yt.chocolatemoo53.com/api/v1/videos/${encodeURIComponent(videoId)}`, {
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-      timeout: 6000
-    }, (res) => {
-      let d = '';
-      res.on('data', c => d += c);
-      res.on('end', () => {
-        try {
-          const j = JSON.parse(d);
-          const title = j.title || 'video';
-          const author = j.author || 'YouTube';
-          const duration = j.lengthSeconds || 0;
-          const thumbnail = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+    let instanceIndex = 0;
 
-          if (type === 'video') {
-            const formats = (j.formatStreams || []).filter(f => f.url);
-            const chosen = formats.find(f => f.itag === '18' || f.itag === 18) || formats[0];
-            if (chosen && chosen.url) {
+    function tryNext() {
+      if (instanceIndex >= INVIDIOUS_INSTANCES.length) {
+        resolve(null);
+        return;
+      }
+      const host = INVIDIOUS_INSTANCES[instanceIndex++];
+      const req = https.get(`https://${host}/api/v1/videos/${encodeURIComponent(videoId)}`, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        },
+        timeout: 6000
+      }, (res) => {
+        let d = '';
+        res.on('data', c => d += c);
+        res.on('end', () => {
+          try {
+            const j = JSON.parse(d);
+            const title = j.title || 'video';
+            const author = j.author || 'YouTube';
+            const duration = j.lengthSeconds || 0;
+            const thumbnail = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+
+            if (type === 'video') {
+              const formats = (j.formatStreams || []).filter(f => f && f.url);
+              let chosen = formats.find(f => f.itag === '18' || f.itag === 18) ||
+                           formats.find(f => f.itag === '22' || f.itag === 22) ||
+                           formats[0];
+
+              if (!chosen && j.adaptiveFormats) {
+                const vf = j.adaptiveFormats.filter(f => f && (f.type || '').startsWith('video') && f.url);
+                chosen = vf.find(f => f.itag === '136' || f.qualityLabel === '720p') ||
+                         vf.find(f => f.itag === '135' || f.qualityLabel === '480p') ||
+                         vf.find(f => f.itag === '134' || f.qualityLabel === '360p') ||
+                         vf.find(f => (f.type || '').includes('mp4')) ||
+                         vf[0];
+              }
+
+              if (chosen && chosen.url) {
+                const rawClen = chosen.clen || chosen.contentLength || (typeof chosen.size === 'number' ? chosen.size : undefined);
+                const contentLength = rawClen ? parseInt(rawClen, 10) : undefined;
+                resolve({
+                  url: chosen.url,
+                  mimeType: chosen.type ? chosen.type.split(';')[0].trim() : 'video/mp4',
+                  contentLength,
+                  duration,
+                  title,
+                  author,
+                  thumbnail,
+                  type: 'video',
+                  extension: (chosen.type && chosen.type.includes('webm')) ? 'webm' : 'mp4'
+                });
+                return;
+              }
+            }
+
+            // Audio option
+            const af = (j.adaptiveFormats || []).filter(f => f && (f.type || '').startsWith('audio') && f.url);
+            const f = af.find(x => x.itag === '140' || x.itag === 140) ||
+                      af.find(x => x.itag === '251' || x.itag === 251) ||
+                      af[0];
+
+            if (f && f.url) {
+              const rawClen = f.clen || f.contentLength || (typeof f.size === 'number' ? f.size : undefined);
+              const contentLength = rawClen ? parseInt(rawClen, 10) : undefined;
               resolve({
-                url: chosen.url,
-                mimeType: chosen.type ? chosen.type.split(';')[0].trim() : 'video/mp4',
-                contentLength: chosen.size ? parseInt(chosen.size, 10) : undefined,
+                url: f.url,
+                mimeType: f.type ? f.type.split(';')[0].trim() : 'audio/mp4',
+                contentLength,
                 duration,
                 title,
                 author,
                 thumbnail,
-                type: 'video',
-                extension: 'mp4'
+                type: 'audio',
+                extension: (f.type && f.type.includes('webm')) ? 'webm' : 'm4a'
               });
               return;
             }
-          }
-
-          const af = (j.adaptiveFormats || []).filter(f => (f.type || '').startsWith('audio') && f.url);
-          const f = af.find(x => x.itag === '140' || x.itag === 140) || af.find(x => x.itag === '251' || x.itag === 251) || af[0];
-          if (f && f.url) {
-            resolve({
-              url: f.url,
-              mimeType: f.type ? f.type.split(';')[0].trim() : 'audio/mp4',
-              contentLength: f.clen ? parseInt(f.clen, 10) : undefined,
-              duration,
-              title,
-              author,
-              thumbnail,
-              type: 'audio',
-              extension: (f.type && f.type.includes('webm')) ? 'webm' : 'm4a'
-            });
-            return;
-          }
-        } catch (e) {}
-        resolve(null);
+          } catch (e) {}
+          tryNext();
+        });
       });
-    });
-    req.on('error', () => resolve(null));
-    req.on('timeout', () => { req.destroy(); resolve(null); });
+
+      req.on('error', tryNext);
+      req.on('timeout', () => {
+        req.destroy();
+        tryNext();
+      });
+    }
+
+    tryNext();
   });
 }
 
@@ -550,88 +594,125 @@ async function handleDownload(req, res) {
 
 /**
  * Pipe direct external URL to response
+ * Automatically follows 301, 302, 303, 307, 308 redirects on the server so client gets full CORS & stream
  * Returns a Promise that resolves when response finishes streaming
  */
-function pipeDirectUrl(url, req, res, mimeType, filename = null) {
+function pipeDirectUrl(initialUrl, req, res, mimeType, filename = null, maxRedirects = 5) {
   return new Promise((resolve, reject) => {
-    const upstreamHeaders = {
-      'User-Agent': 'Mozilla/5.0 (Linux; Android 12; Quest 3) AppleWebKit/537.36'
-    };
-    if (req.headers.range) {
-      upstreamHeaders['Range'] = req.headers.range;
-    }
+    function fetchUrl(targetUrl, redirectsLeft) {
+      if (redirectsLeft <= 0) {
+        const err = new Error('Too many redirects');
+        if (!res.headersSent) {
+          if (res.writeHead) res.writeHead(502, { 'Content-Type': 'application/json' });
+          else if (res.status) res.status(502).json({ error: err.message });
+          res.end ? res.end(JSON.stringify({ error: err.message })) : null;
+        }
+        return reject(err);
+      }
 
-    const upstreamReq = https.request(url, {
-      method: req.method === 'HEAD' ? 'HEAD' : 'GET',
-      headers: upstreamHeaders
-    }, (upstreamRes) => {
-      const headers = {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
-        'Access-Control-Allow-Headers': '*',
-        'Access-Control-Expose-Headers': 'Content-Length, Content-Range, Content-Disposition',
-        'Accept-Ranges': 'bytes',
-        'Content-Type': upstreamRes.headers['content-type'] || mimeType || 'audio/mp4',
-        'Cache-Control': 'no-cache, no-transform',
-        'X-Accel-Buffering': 'no'
+      let parsedUrl;
+      try {
+        parsedUrl = new URL(targetUrl);
+      } catch (err) {
+        if (!res.headersSent) {
+          if (res.writeHead) res.writeHead(502, { 'Content-Type': 'application/json' });
+          else if (res.status) res.status(502).json({ error: 'Invalid media URL' });
+          res.end ? res.end(JSON.stringify({ error: 'Invalid media URL' })) : null;
+        }
+        return reject(err);
+      }
+
+      const client = parsedUrl.protocol === 'http:' ? require('http') : https;
+      const upstreamHeaders = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
       };
-
-      if (filename) {
-        headers['Content-Disposition'] = `attachment; filename="${encodeURIComponent(filename)}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
-      }
-      if (upstreamRes.headers['content-range']) {
-        headers['Content-Range'] = upstreamRes.headers['content-range'];
-      }
-      if (upstreamRes.headers['content-length']) {
-        headers['Content-Length'] = upstreamRes.headers['content-length'];
+      if (req.headers && req.headers.range) {
+        upstreamHeaders['Range'] = req.headers.range;
       }
 
-      const statusCode = upstreamRes.statusCode || (req.headers.range ? 206 : 200);
+      const upstreamReq = client.request(targetUrl, {
+        method: req.method === 'HEAD' ? 'HEAD' : 'GET',
+        headers: upstreamHeaders
+      }, (upstreamRes) => {
+        // Automatically follow 301, 302, 303, 307, 308 redirects
+        if (upstreamRes.statusCode >= 300 && upstreamRes.statusCode < 400 && upstreamRes.headers.location) {
+          upstreamRes.resume(); // discard body
+          const nextUrl = new URL(upstreamRes.headers.location, targetUrl).toString();
+          return fetchUrl(nextUrl, redirectsLeft - 1);
+        }
 
-      if (res.writeHead) {
-        res.writeHead(statusCode, headers);
-      } else if (res.status) {
-        res.status(statusCode);
-        for (const [k, v] of Object.entries(headers)) res.setHeader(k, v);
-      }
+        const headers = {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+          'Access-Control-Allow-Headers': '*',
+          'Access-Control-Expose-Headers': 'Content-Length, Content-Range, Content-Disposition',
+          'Accept-Ranges': 'bytes',
+          'Content-Type': upstreamRes.headers['content-type'] || mimeType || (filename && filename.endsWith('.mp4') ? 'video/mp4' : 'audio/mp4'),
+          'Cache-Control': 'no-cache, no-transform',
+          'X-Accel-Buffering': 'no'
+        };
 
-      if (req.method === 'HEAD') {
-        res.end();
-        upstreamRes.resume();
-        resolve();
-        return;
-      }
+        if (filename) {
+          headers['Content-Disposition'] = `attachment; filename="${encodeURIComponent(filename)}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
+        }
+        if (upstreamRes.headers['content-range']) {
+          headers['Content-Range'] = upstreamRes.headers['content-range'];
+        }
+        if (upstreamRes.headers['content-length']) {
+          headers['Content-Length'] = upstreamRes.headers['content-length'];
+        }
 
-      upstreamRes.pipe(res);
+        const statusCode = upstreamRes.statusCode || (req.headers && req.headers.range ? 206 : 200);
 
-      res.on('finish', resolve);
-      res.on('close', resolve);
+        if (res.writeHead) {
+          res.writeHead(statusCode, headers);
+        } else if (res.status) {
+          res.status(statusCode);
+          for (const [k, v] of Object.entries(headers)) res.setHeader(k, v);
+        }
 
-      req.on('close', () => {
-        try { upstreamReq.destroy(); } catch (e) {}
-        resolve();
+        if (req.method === 'HEAD') {
+          res.end();
+          upstreamRes.resume();
+          resolve();
+          return;
+        }
+
+        upstreamRes.pipe(res);
+
+        res.on('finish', resolve);
+        res.on('close', resolve);
+
+        if (req.on) {
+          req.on('close', () => {
+            try { upstreamReq.destroy(); } catch (e) {}
+            resolve();
+          });
+        }
+
+        upstreamRes.on('error', (err) => {
+          console.warn('pipeDirectUrl upstreamRes error:', err.message);
+          reject(err);
+        });
       });
 
-      upstreamRes.on('error', (err) => {
-        console.warn('pipeDirectUrl upstreamRes error:', err.message);
+      upstreamReq.on('error', (err) => {
+        console.warn('pipeDirectUrl upstreamReq error:', err.message);
+        if (!res.headersSent) {
+          if (res.writeHead) {
+            res.writeHead(502, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: err.message }));
+          } else if (res.status) {
+            res.status(502).json({ error: err.message });
+          }
+        }
         reject(err);
       });
-    });
 
-    upstreamReq.on('error', (err) => {
-      console.warn('pipeDirectUrl upstreamReq error:', err.message);
-      if (!res.headersSent) {
-        if (res.writeHead) {
-          res.writeHead(502, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: err.message }));
-        } else {
-          res.status(502).json({ error: err.message });
-        }
-      }
-      reject(err);
-    });
+      upstreamReq.end();
+    }
 
-    upstreamReq.end();
+    fetchUrl(initialUrl, maxRedirects);
   });
 }
 

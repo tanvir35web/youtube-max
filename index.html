@@ -3,18 +3,57 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>YouTube</title>
   
-  <!-- iOS PWA Meta Tags -->
+  <!-- Primary Meta Tags -->
+  <title>YouTube Max - Clean, Ad-Free YouTube with Background Play</title>
+  <meta name="title" content="YouTube Max - Clean, Ad-Free YouTube with Background Play">
+  <meta name="description" content="Clean, fast and ad-free YouTube Progressive Web App (PWA). Supports screen-off background audio playback, lock screen controls, Picture-in-Picture (PiP), and audio mode.">
+  <meta name="keywords" content="YouTube Max, Ad-Free YouTube, YouTube PWA, YouTube Background Play, Lockscreen Playback, Picture-in-Picture, PiP, Clean YouTube, Adblock, iPhone YouTube">
+  <meta name="author" content="YouTube Max">
+  <meta name="robots" content="index, follow">
+  
+  <!-- Open Graph / Facebook / WhatsApp / LinkedIn -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="YouTube Max">
+  <meta property="og:title" content="YouTube Max - Clean, Ad-Free YouTube with Background Play">
+  <meta property="og:description" content="Clean, fast and ad-free YouTube Progressive Web App (PWA). Supports screen-off background audio playback, lock screen controls, Picture-in-Picture (PiP), and audio mode.">
+  <meta property="og:image" content="/icons/og-image.png">
+  <meta property="og:image:secure_url" content="/icons/og-image.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="YouTube Max - Clean, Ad-Free YouTube Experience">
+  <meta property="og:locale" content="en_US">
+
+  <!-- Twitter / X Cards -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="YouTube Max - Clean, Ad-Free YouTube with Background Play">
+  <meta name="twitter:description" content="Clean, fast and ad-free YouTube Progressive Web App (PWA). Supports screen-off background audio playback, lock screen controls, Picture-in-Picture (PiP), and audio mode.">
+  <meta name="twitter:image" content="/icons/og-image.png">
+  <meta name="twitter:image:alt" content="YouTube Max - Clean, Ad-Free YouTube Experience">
+
+  <!-- Favicon and App Icons -->
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png">
+  <link rel="shortcut icon" href="/favicon.ico">
+
+  <!-- iOS / Apple Mobile Web App -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="YouTube">
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
   
+  <!-- Android / Generic PWA Meta Tags -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="application-name" content="YouTube Max">
+  <meta name="theme-color" content="#0f0f0f">
+  <meta name="msapplication-TileColor" content="#0f0f0f">
+  <meta name="msapplication-TileImage" content="/icons/icon-512.png">
+
   <!-- Standard Web Manifest -->
   <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#0f0f0f">
 
   <!-- Google Identity Services (Sign In with Google) -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -43,16 +82,22 @@
     })();
   </script>
 
-  <!-- Cache-Busted Stylesheet to guarantee fresh load on iPhone -->
-  <link rel="stylesheet" href="/style.css?v=8.6">
+  <!-- Cache-Busted Stylesheet to guarantee fresh load on Desktop and iPhone -->
+  <link rel="stylesheet" href="/style.css?v=9.5">
 </head>
 <body>
-  <!-- Safe Area Wrapper for iPhone Notch & Home Indicator -->
+  <!-- Safe Area Wrapper for iPhone Notch & Desktop App Shell -->
   <div id="app">
     
     <!-- Top Header -->
     <header id="header">
       <div class="header-left">
+        <!-- Sidebar Drawer / Collapse Toggle (Desktop) -->
+        <button id="menuToggleBtn" class="icon-btn menu-toggle-btn" title="Toggle Guide" aria-label="Toggle Guide">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+            <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+          </svg>
+        </button>
         <div class="yt-logo" id="logoBtn">
           <svg viewBox="0 0 90 20" class="logo-svg">
             <path d="M27.97 3.12A3.5 3.5 0 0 0 25.5.65C23.32.07 14.5 0 14.5 0S5.68.07 3.5.65A3.5 3.5 0 0 0 1.03 3.12C.45 5.3 0 9.87 0 9.87s.45 4.58 1.03 6.75a3.5 3.5 0 0 0 2.47 2.48c2.18.57 11 .57 11 .57s8.82 0 11-.57a3.5 3.5 0 0 0 2.47-2.48c.58-2.17 1.03-6.75 1.03-6.75s-.45-4.57-1.03-6.75z" fill="#FF0000"/>
@@ -62,6 +107,27 @@
           <span class="badge-max">MAX</span>
         </div>
       </div>
+
+      <!-- Search Box (Overlay on Mobile, Prominent Center Bar on Desktop) -->
+      <div id="searchOverlay" class="search-overlay hidden">
+        <div class="search-bar-wrap">
+          <button id="searchBackBtn" class="icon-btn search-back-btn" aria-label="Back">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+              <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+            </svg>
+          </button>
+          <div class="search-input-box">
+            <input type="search" id="searchInput" placeholder="Search or paste YouTube URL..." autocomplete="off" autocorrect="off" autocapitalize="none">
+            <button id="searchClearBtn" class="icon-btn-sm hidden" aria-label="Clear">✕</button>
+          </div>
+          <button id="searchSubmitBtn" class="icon-btn search-submit-btn" aria-label="Search" title="Search">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+              <path d="M20.87 20.17l-5.59-5.59A7.95 7.95 0 0 0 17 10a8 8 0 1 0-8 8 7.95 7.95 0 0 0 4.58-1.72l5.59 5.59a.5.5 0 0 0 .7 0l1-1a.5.5 0 0 0 0-.7zM4 10a6 6 0 1 1 6 6 6 6 0 0 1-6-6z"/>
+            </svg>
+          </button>
+        </div>
+        <div id="searchSuggestions" class="search-suggestions"></div>
+      </div>
       
       <div class="header-right">
         <!-- Direct URL paste quick button -->
@@ -70,8 +136,8 @@
             <path d="M16 1H4C2.9 1 2 1.9 2 3V17H4V3H16V1ZM19 5H8C6.9 5 6 5.9 6 7V21C6 22.1 6.9 23 8 23H19C20.1 23 21 22.1 21 21V7C21 5.9 20.1 5 19 5ZM19 21H8V7H19V21Z"/>
           </svg>
         </button>
-        <!-- Search icon -->
-        <button id="searchOpenBtn" class="icon-btn" title="Search" aria-label="Search">
+        <!-- Search icon (Mobile Only) -->
+        <button id="searchOpenBtn" class="icon-btn mobile-only-btn" title="Search" aria-label="Search">
           <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
             <path d="M20.87 20.17l-5.59-5.59A7.95 7.95 0 0 0 17 10a8 8 0 1 0-8 8 7.95 7.95 0 0 0 4.58-1.72l5.59 5.59a.5.5 0 0 0 .7 0l1-1a.5.5 0 0 0 0-.7zM4 10a6 6 0 1 1 6 6 6 6 0 0 1-6-6z"/>
           </svg>
@@ -95,84 +161,206 @@
       </div>
     </header>
 
-    <!-- Search Overlay Box -->
-    <div id="searchOverlay" class="search-overlay hidden">
-      <div class="search-bar-wrap">
-        <button id="searchBackBtn" class="icon-btn" aria-label="Back">
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
-          </svg>
-        </button>
-        <div class="search-input-box">
-          <input type="search" id="searchInput" placeholder="Search or paste YouTube URL..." autocomplete="off" autocorrect="off" autocapitalize="none">
-          <button id="searchClearBtn" class="icon-btn-sm hidden" aria-label="Clear">✕</button>
+    <!-- App Body: Holds Left Sidebar + Main Content -->
+    <div id="appBody" class="app-body">
+
+      <!-- Sidebar on Desktop / Bottom Nav on Mobile -->
+      <footer id="bottomNav" class="sidebar-nav">
+        <!-- Primary Navigation Tabs -->
+        <div class="sidebar-primary-section">
+          <button class="nav-item active" id="navHome" title="Home">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+              <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+            </svg>
+            <span>Home</span>
+          </button>
+          <button class="nav-item" id="navTrending" title="Trending">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+              <path d="M17.53 11.2c-.23-.3-.49-.57-.75-.82C15.93 9.4 15 8.1 15 6.5c0-.6.18-1.2.46-1.7-.56.12-1.12.35-1.63.72-2.14 1.5-2.83 4.2-1.7 6.48.06.12.1.25.1.38 0 .4-.3.7-.7.7-.3 0-.6-.2-.7-.5-.7-1.4-.7-3.1 0-4.5.1-.3 0-.6-.2-.8-.2-.2-.5-.3-.8-.2C6.7 8.3 5 11.4 5 15c0 3.9 3.1 7 7 7 4.1 0 7.4-3.3 7.4-7.4 0-1.2-.4-2.4-1.87-3.4zM12 20c-2.8 0-5-2.2-5-5 0-1.8 1-3.4 2.5-4.2-.2 1.3.1 2.7.9 3.8.7 1 1.8 1.6 3 1.6.4 0 .8-.1 1.2-.2C14.2 18.2 13.2 20 12 20z"/>
+            </svg>
+            <span>Trending</span>
+          </button>
+          <button class="nav-item" id="navLibrary" title="Library">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+              <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 12.5v-9l6 4.5-6 4.5z"/>
+            </svg>
+            <span>Library</span>
+          </button>
+          <button class="nav-item mobile-only-nav" id="navSettings" title="Settings">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+              <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84c-.24 0-.44.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+            </svg>
+            <span>Settings</span>
+          </button>
         </div>
-        <button id="searchSubmitBtn" class="icon-btn" aria-label="Search">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-            <path d="M20.87 20.17l-5.59-5.59A7.95 7.95 0 0 0 17 10a8 8 0 1 0-8 8 7.95 7.95 0 0 0 4.58-1.72l5.59 5.59a.5.5 0 0 0 .7 0l1-1a.5.5 0 0 0 0-.7zM4 10a6 6 0 1 1 6 6 6 6 0 0 1-6-6z"/>
-          </svg>
-        </button>
-      </div>
-      <div id="searchSuggestions" class="search-suggestions"></div>
-    </div>
 
-    <!-- Category Chips -->
-    <nav id="categoryChips" class="category-chips">
-      <button class="chip active" data-topic="trending">🔥 Trending</button>
-      <button class="chip" data-topic="music">🎵 Music</button>
-      <button class="chip" data-topic="gaming">🎮 Gaming</button>
-      <button class="chip" data-topic="news">📰 News</button>
-      <button class="chip" data-topic="podcasts">🎙️ Podcasts</button>
-      <button class="chip" data-topic="bangla">🇧🇩 Bangla</button>
-      <button class="chip" data-topic="lofi">☕ Lo-Fi</button>
-      <button class="chip" data-topic="tech">💻 Tech</button>
-    </nav>
+        <!-- Desktop Specific Extra Sections -->
+        <div class="sidebar-desktop-extra">
+          <div class="sidebar-divider"></div>
+          <div class="sidebar-group-title">YOU</div>
+          <button class="nav-item sidebar-link" id="navDownloads" title="Offline Downloads">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+              <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
+            </svg>
+            <span>Downloads</span>
+          </button>
+          <button class="nav-item sidebar-link" id="navSaved" title="Saved Videos">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+              <path d="M14 10H2v2h12v-2zm0-4H2v2h12V6zm4 8v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM2 16h8v-2H2v2z"/>
+            </svg>
+            <span>Saved Videos</span>
+          </button>
+          <button class="nav-item sidebar-link" id="navHistory" title="History">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+              <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+            </svg>
+            <span>History</span>
+          </button>
 
-    <!-- Main Scrollable Feed -->
-    <main id="mainFeed">
-      <!-- Loading Skeleton / Spinner -->
-      <div id="feedLoading" class="feed-loading">
-        <div class="spinner"></div>
-        <p>Loading ad-free videos...</p>
-      </div>
+          <div class="sidebar-divider"></div>
+          <div class="sidebar-group-title">EXPLORE</div>
+          <button class="nav-item sidebar-link" data-explore="bangla" title="Bangla">
+            <span class="sidebar-emoji-icon">🇧🇩</span>
+            <span>Bangla</span>
+          </button>
+          <button class="nav-item sidebar-link" data-explore="music" title="Music">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+              <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+            </svg>
+            <span>Music</span>
+          </button>
+          <button class="nav-item sidebar-link" data-explore="gaming" title="Gaming">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+              <path d="M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-10 7H8v3H6v-3H3v-2h3V8h2v3h3v2zm4.5 2c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm4-3c-.83 0-1.5-.67-1.5-1.5S18.67 9 19.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+            </svg>
+            <span>Gaming</span>
+          </button>
+          <button class="nav-item sidebar-link" data-explore="tech" title="Technology">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+              <path d="M20 18c1.1 0 1.99-.9 1.99-2L22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2H0v2h24v-2h-4zM4 6h16v10H4V6z"/>
+            </svg>
+            <span>Technology</span>
+          </button>
+          <button class="nav-item sidebar-link" data-explore="podcasts" title="Podcasts">
+            <span class="sidebar-emoji-icon">🎙️</span>
+            <span>Podcasts</span>
+          </button>
 
-      <!-- Feed Grid -->
-      <div id="videoGrid" class="video-grid"></div>
+          <div class="sidebar-divider"></div>
+          <button class="nav-item sidebar-link" id="desktopSettingsNav" title="Settings">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+              <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84c-.24 0-.44.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+            </svg>
+            <span>Settings</span>
+          </button>
 
-      <!-- Error / Retry Box -->
-      <div id="feedError" class="feed-error hidden">
-        <p id="feedErrorMsg">Unable to load feed. Switching to backup server...</p>
-        <button id="retryBtn" class="btn-primary">Retry</button>
-      </div>
-    </main>
+          <div class="sidebar-footer">
+            <p class="sidebar-copy">© 2026 YouTube MAX</p>
+            <p class="sidebar-tagline">Desktop & Mobile Hybrid</p>
+          </div>
+        </div>
+      </footer>
 
-    <!-- Bottom Navigation Bar (iOS Native Style) -->
-    <footer id="bottomNav">
-      <button class="nav-item active" id="navHome">
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-          <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
-        </svg>
-        <span>Home</span>
-      </button>
-      <button class="nav-item" id="navTrending">
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-          <path d="M17.53 11.2c-.23-.3-.49-.57-.75-.82C15.93 9.4 15 8.1 15 6.5c0-.6.18-1.2.46-1.7-.56.12-1.12.35-1.63.72-2.14 1.5-2.83 4.2-1.7 6.48.06.12.1.25.1.38 0 .4-.3.7-.7.7-.3 0-.6-.2-.7-.5-.7-1.4-.7-3.1 0-4.5.1-.3 0-.6-.2-.8-.2-.2-.5-.3-.8-.2C6.7 8.3 5 11.4 5 15c0 3.9 3.1 7 7 7 4.1 0 7.4-3.3 7.4-7.4 0-1.2-.4-2.4-1.87-3.4zM12 20c-2.8 0-5-2.2-5-5 0-1.8 1-3.4 2.5-4.2-.2 1.3.1 2.7.9 3.8.7 1 1.8 1.6 3 1.6.4 0 .8-.1 1.2-.2C14.2 18.2 13.2 20 12 20z"/>
-        </svg>
-        <span>Trending</span>
-      </button>
-      <button class="nav-item" id="navLibrary">
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-          <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 12.5v-9l6 4.5-6 4.5z"/>
-        </svg>
-        <span>Library</span>
-      </button>
-      <button class="nav-item" id="navSettings">
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-          <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84c-.24 0-.44.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
-        </svg>
-        <span>Settings</span>
-      </button>
-    </footer>
+      <!-- Main Content Area -->
+      <div id="mainContent" class="main-content">
+        <!-- Category Chips -->
+        <nav id="categoryChips" class="category-chips">
+          <button class="chip active" data-topic="bangla">🇧🇩 Bangla</button>
+          <button class="chip" data-topic="trending">🔥 Trending</button>
+          <button class="chip" data-topic="music">🎵 Music</button>
+          <button class="chip" data-topic="gaming">🎮 Gaming</button>
+          <button class="chip" data-topic="news">📰 News</button>
+          <button class="chip" data-topic="podcasts">🎙️ Podcasts</button>
+          <button class="chip" data-topic="lofi">☕ Lo-Fi</button>
+          <button class="chip" data-topic="tech">💻 Tech</button>
+        </nav>
+
+        <!-- Main Scrollable Feed -->
+        <main id="mainFeed">
+          <!-- Loading Skeleton / Spinner -->
+          <div id="feedLoading" class="feed-loading">
+            <div class="spinner"></div>
+            <p>Loading ad-free videos...</p>
+          </div>
+
+          <!-- Feed Grid -->
+          <div id="videoGrid" class="video-grid"></div>
+
+          <!-- Error / Retry Box -->
+          <div id="feedError" class="feed-error hidden">
+            <p id="feedErrorMsg">Unable to load feed. Switching to backup server...</p>
+            <button id="retryBtn" class="btn-primary">Retry</button>
+          </div>
+        </main>
+
+        <!-- Library Screen (Saved Bookmarks & History) -->
+        <section id="libraryScreen" class="sub-screen hidden">
+          <div class="screen-header">
+            <h2>Your Library</h2>
+            <button id="clearHistoryBtn" class="btn-text">Clear History</button>
+          </div>
+
+          <!-- Google Account Profile Card in Library -->
+          <div id="libraryAuthCard" class="library-auth-card">
+            <!-- Logged out state -->
+            <div id="authLoggedOutView" class="auth-card-content">
+              <div class="auth-icon-wrap">
+                <svg viewBox="0 0 48 48" width="28" height="28">
+                  <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                  <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                  <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.79l7.97-6.2z"/>
+                  <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                </svg>
+              </div>
+              <div class="auth-card-text">
+                <h3>Google Account</h3>
+                <p>Sign in to sync your saved videos & watch history</p>
+              </div>
+              <button id="librarySignInBtn" class="btn-google-pill">Sign In</button>
+            </div>
+
+            <!-- Logged in state -->
+            <div id="authLoggedInView" class="auth-card-content hidden">
+              <img id="libraryUserAvatar" src="" alt="Avatar" class="library-user-avatar">
+              <div class="auth-card-text">
+                <div class="user-name-row">
+                  <h3 id="libraryUserName">User Name</h3>
+                  <span class="badge-google">Google</span>
+                </div>
+                <p id="libraryUserEmail">user@gmail.com</p>
+              </div>
+              <button id="libraryManageBtn" class="btn-outline-xs">Account</button>
+            </div>
+          </div>
+          
+          <!-- Offline Downloads Section -->
+          <div class="library-section">
+            <div class="section-title-row">
+              <h3>⬇️ Offline Downloads (অফলাইন প্লেব্যাক)</h3>
+              <span id="offlineBadgeCount" class="badge-count">0 items</span>
+            </div>
+            <div id="downloadsList" class="library-list">
+              <p class="empty-text">No offline videos yet. Tap "Download" on any video to play without internet!</p>
+            </div>
+          </div>
+
+          <div class="library-section">
+            <h3>Saved Videos</h3>
+            <div id="savedVideosList" class="library-list">
+              <p class="empty-text">No saved videos yet. Tap "Save" on any video to bookmark it!</p>
+            </div>
+          </div>
+
+          <div class="library-section">
+            <h3>Recently Watched</h3>
+            <div id="historyVideosList" class="library-list">
+              <p class="empty-text">Your watch history will appear here.</p>
+            </div>
+          </div>
+        </section>
+      </div><!-- /#mainContent -->
+
+    </div><!-- /#appBody -->
 
     <!-- Mini Player Bar (shown when player is minimized while browsing) -->
     <div id="miniPlayer" class="mini-player hidden">
@@ -193,304 +381,368 @@
       </div>
     </div>
 
-    <!-- Full Watch Page / Player Modal (iOS Full Height Sheet) -->
+    <!-- Full Watch Page / Player Modal (Desktop 2-Column Theater & iOS Sheet) -->
     <section id="watchModal" class="watch-modal hidden">
-      
-      <!-- Video Player Sticky Container -->
-      <div id="playerContainer" class="player-container">
-        <!-- Floating Minimize Arrow (YouTube Native Style) -->
-        <button id="closeWatchBtn" class="floating-back-btn" aria-label="Minimize Player">
-          <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
-            <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
+
+      <!-- Desktop Watch Header Bar -->
+      <div class="watch-desktop-header">
+        <button id="closeWatchDesktopBtn" class="watch-back-link" title="Back to browse" aria-label="Back to browse">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
           </svg>
+          <span>Back to Browse</span>
         </button>
-
-        <!-- Clean YouTube Embed Iframe (youtube-nocookie with iOS playsinline) -->
-        <iframe 
-          id="playerIframe" 
-          class="player-iframe" 
-          src="" 
-          title="YouTube Player"
-          frameborder="0" 
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-          allowfullscreen
-        ></iframe>
-
-        <!-- Video Element for Native Direct Play / PiP -->
-        <video 
-          id="mainVideo" 
-          playsinline 
-          webkit-playsinline 
-          preload="metadata"
-          class="hidden"
-        ></video>
-
-        <!-- Pure Audio Element (for seamless Screen-off / Background Mode) -->
-        <audio 
-          id="mainAudio" 
-          preload="auto"
-          playsinline
-        ></audio>
-
-        <!-- Audio Mode Visualizer Screen (Active in Screen-Off / Audio Only Mode) -->
-        <div id="audioModeScreen" class="audio-mode-screen hidden">
-          <div class="vinyl-wrapper">
-            <div class="vinyl-record" id="vinylRecord">
-              <img id="audioModeThumb" src="" alt="Album Artwork" class="vinyl-art">
-            </div>
-            <div class="audio-wave-bars">
-              <span></span><span></span><span></span><span></span><span></span>
-            </div>
-          </div>
-          <div class="audio-badge" id="audioModeBadge">🎧 Background Audio Active (Screen-Off Ready)</div>
-
-          <!-- In-player Audio Controls -->
-          <div class="audio-player-controls">
-            <div class="audio-scrubber-row">
-              <span id="audioCurrentTime" class="audio-time">0:00</span>
-              <input type="range" id="audioScrubber" class="audio-scrubber" min="0" max="100" value="0" step="0.5">
-              <span id="audioDuration" class="audio-time">0:00</span>
-            </div>
-            <div class="audio-btns-row">
-              <button id="audioRewindBtn" class="audio-ctrl-btn" title="Rewind 10s" aria-label="Rewind 10s">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                  <path d="M12.5 8c-2.65 0-5.05 1-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.2 3.16-1.98 5.12-1.98 3.77 0 6.94 2.61 7.7 6.1l2.43-.8C21.6 11.2 17.5 8 12.5 8z"/>
-                </svg>
-                <span class="ctrl-subtext">-10s</span>
-              </button>
-              <button id="audioPlayBtn" class="audio-ctrl-btn-play" title="Play/Pause" aria-label="Play/Pause">
-                <svg id="audioPlayIcon" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-                  <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
-                </svg>
-              </button>
-              <button id="audioForwardBtn" class="audio-ctrl-btn" title="Forward 10s" aria-label="Forward 10s">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                  <path d="M11.5 8c2.65 0 5.05 1 6.9 2.6L22 7v9h-9l3.62-3.62c-1.39-1.2-3.16-1.98-5.12-1.98-3.77 0-6.94 2.61-7.7 6.1l-2.43-.8C2.4 11.2 6.5 8 11.5 8z"/>
-                </svg>
-                <span class="ctrl-subtext">+10s</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Watch Details & Related Feed -->
-      <div id="watchScroll" class="watch-scroll">
-        <!-- Title & Stats -->
-        <div class="watch-meta">
-          <h1 id="watchTitle" class="watch-title">Video Title</h1>
-          <div class="watch-submeta">
-            <span id="watchViews">0 views</span> • <span id="watchDate">Recently</span>
-          </div>
-
-          <!-- Quick Action Buttons -->
-          <div class="watch-actions-bar">
-            <!-- Dedicated Play/Pause Video & Audio Toggle Button -->
-            <button id="videoPlayPauseBtn" class="action-pill primary-pill" title="Play or Pause">
-              <svg id="videoPlayPauseIcon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
-              </svg>
-              <span id="videoPlayPauseText">Pause</span>
-            </button>
-
-            <!-- Screen-off Audio Mode Toggle -->
-            <button id="toggleAudioModeBtn" class="action-pill" title="Screen-off Audio Mode">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                <path d="M12 1a9 9 0 0 0-9 9v7c0 1.66 1.34 3 3 3h3v-8H5v-2c0-3.87 3.13-7 7-7s7 3.13 7 7v2h-4v8h3c1.66 0 3-1.34 3-3v-7a9 9 0 0 0-9-9z"/>
-              </svg>
-              <span id="audioModeText">Audio Mode</span>
-            </button>
-
-            <button id="likeBtn" class="action-pill">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                <path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/>
-              </svg>
-              <span id="watchLikes">Like</span>
-            </button>
-
-            <button id="shareBtn" class="action-pill">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/>
-              </svg>
-              <span>Share</span>
-            </button>
-
-            <button id="saveLibraryBtn" class="action-pill">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                <path d="M14 10H2v2h12v-2zm0-4H2v2h12V6zm4 8v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM2 16h8v-2H2v2z"/>
-              </svg>
-              <span id="saveLibraryText">Save</span>
-            </button>
-
-            <!-- Download Button (Offline Storage) -->
-            <button id="downloadBtn" class="action-pill download-pill" title="Download for Offline Play">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
-              </svg>
-              <span id="downloadBtnText">Download</span>
-            </button>
-
-            <button id="copyUrlBtn" class="action-pill">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                <path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/>
-              </svg>
-              <span>Copy Link</span>
-            </button>
-          </div>
-
-          <!-- Channel Box -->
-          <div class="channel-card">
-            <img id="channelAvatar" src="" alt="Avatar" class="channel-avatar">
-            <div class="channel-info">
-              <div id="channelName" class="channel-name">Channel Name</div>
-              <div id="channelSubs" class="channel-subs">0 subscribers</div>
-            </div>
-          </div>
-
-          <!-- Description Box (Expandable) -->
-          <div id="descriptionBox" class="description-box">
-            <div id="descriptionText" class="description-text">Description...</div>
-            <button id="descToggleBtn" class="desc-more-btn">Show more</button>
-          </div>
-        </div>
-
-        <!-- Related Videos Header & List -->
-        <div class="related-section">
-          <div class="section-heading">Up Next</div>
-          <div id="relatedVideos" class="related-list"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Library Screen (Saved Bookmarks & History) -->
-    <section id="libraryScreen" class="sub-screen hidden">
-      <div class="screen-header">
-        <h2>Your Library</h2>
-        <button id="clearHistoryBtn" class="btn-text">Clear History</button>
-      </div>
-
-      <!-- Google Account Profile Card in Library -->
-      <div id="libraryAuthCard" class="library-auth-card">
-        <!-- Logged out state -->
-        <div id="authLoggedOutView" class="auth-card-content">
-          <div class="auth-icon-wrap">
-            <svg viewBox="0 0 48 48" width="28" height="28">
-              <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-              <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-              <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.79l7.97-6.2z"/>
-              <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+        <div class="watch-desktop-title-preview" id="watchDesktopHeaderTitle">Now Playing</div>
+        <div class="watch-desktop-actions">
+          <button id="minimizeToPipBtn" class="icon-btn" title="Minimize to Mini Player" aria-label="Minimize">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+              <path d="M19 11h-8v6h8v-6zm4 8V4.98C23 3.88 22.1 3 21 3H3c-1.1 0-2 .88-2 1.98V19c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2zm-2 .02H3V4.97h18v14.05z"/>
             </svg>
-          </div>
-          <div class="auth-card-text">
-            <h3>Google Account</h3>
-            <p>Sign in to sync your saved videos & watch history</p>
-          </div>
-          <button id="librarySignInBtn" class="btn-google-pill">Sign In</button>
+          </button>
         </div>
+      </div>
 
-        <!-- Logged in state -->
-        <div id="authLoggedInView" class="auth-card-content hidden">
-          <img id="libraryUserAvatar" src="" alt="Avatar" class="library-user-avatar">
-          <div class="auth-card-text">
-            <div class="user-name-row">
-              <h3 id="libraryUserName">User Name</h3>
-              <span class="badge-google">Google</span>
+      <!-- Watch Scroll Body -->
+      <div id="watchScroll" class="watch-scroll">
+        <div class="watch-content-layout">
+
+          <!-- Primary (Left) Column: Player & Info -->
+          <div class="watch-primary-col">
+            <!-- Video Player Sticky Container -->
+            <div id="playerContainer" class="player-container">
+              <!-- Floating Minimize Arrow (Mobile Only) -->
+              <button id="closeWatchBtn" class="floating-back-btn" aria-label="Minimize Player">
+                <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+                  <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
+                </svg>
+              </button>
+
+              <!-- Clean YouTube Embed Iframe -->
+              <iframe 
+                id="playerIframe" 
+                class="player-iframe" 
+                src="" 
+                title="YouTube Player"
+                frameborder="0" 
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                allowfullscreen
+              ></iframe>
+
+              <!-- Video Element for Native Direct Play / PiP -->
+              <video 
+                id="mainVideo" 
+                playsinline 
+                webkit-playsinline 
+                preload="metadata"
+                class="hidden"
+              ></video>
+
+              <!-- Pure Audio Element (for seamless Screen-off / Background Mode) -->
+              <audio 
+                id="mainAudio" 
+                preload="auto"
+                playsinline
+              ></audio>
+
+              <!-- Audio Mode Visualizer Screen -->
+              <div id="audioModeScreen" class="audio-mode-screen hidden">
+                <div class="vinyl-wrapper">
+                  <div class="vinyl-record" id="vinylRecord">
+                    <img id="audioModeThumb" src="" alt="Album Artwork" class="vinyl-art">
+                  </div>
+                  <div class="audio-wave-bars">
+                    <span></span><span></span><span></span><span></span><span></span>
+                  </div>
+                </div>
+                <div class="audio-badge" id="audioModeBadge">🎧 Background Audio Active (Screen-Off Ready)</div>
+
+                <!-- In-player Audio Controls -->
+                <div class="audio-player-controls">
+                  <div class="audio-scrubber-row">
+                    <span id="audioCurrentTime" class="audio-time">0:00</span>
+                    <input type="range" id="audioScrubber" class="audio-scrubber" min="0" max="100" value="0" step="0.5">
+                    <span id="audioDuration" class="audio-time">0:00</span>
+                  </div>
+                  <div class="audio-btns-row">
+                    <button id="audioRewindBtn" class="audio-ctrl-btn" title="Rewind 10s" aria-label="Rewind 10s">
+                      <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                        <path d="M12.5 8c-2.65 0-5.05 1-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.2 3.16-1.98 5.12-1.98 3.77 0 6.94 2.61 7.7 6.1l2.43-.8C21.6 11.2 17.5 8 12.5 8z"/>
+                      </svg>
+                      <span class="ctrl-subtext">-10s</span>
+                    </button>
+                    <button id="audioPlayBtn" class="audio-ctrl-btn-play" title="Play/Pause" aria-label="Play/Pause">
+                      <svg id="audioPlayIcon" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                        <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                      </svg>
+                    </button>
+                    <button id="audioForwardBtn" class="audio-ctrl-btn" title="Forward 10s" aria-label="Forward 10s">
+                      <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                        <path d="M11.5 8c2.65 0 5.05 1 6.9 2.6L22 7v9h-9l3.62-3.62c-1.39-1.2-3.16-1.98-5.12-1.98-3.77 0-6.94 2.61-7.7 6.1l-2.43-.8C2.4 11.2 6.5 8 11.5 8z"/>
+                      </svg>
+                      <span class="ctrl-subtext">+10s</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
-            <p id="libraryUserEmail">user@gmail.com</p>
+
+            <!-- Watch Details & Meta -->
+            <div class="watch-meta">
+              <h1 id="watchTitle" class="watch-title">Video Title</h1>
+              <div class="watch-submeta">
+                <span id="watchViews">0 views</span> • <span id="watchDate">Recently</span>
+              </div>
+
+              <!-- Channel & Actions Row -->
+              <div class="watch-details-row">
+                <!-- Channel Box -->
+                <div class="channel-card">
+                  <img id="channelAvatar" src="" alt="Avatar" class="channel-avatar">
+                  <div class="channel-info">
+                    <div id="channelName" class="channel-name">Channel Name</div>
+                    <div id="channelSubs" class="channel-subs">0 subscribers</div>
+                  </div>
+                </div>
+
+                <!-- Quick Action Buttons -->
+                <div class="watch-actions-bar">
+                  <!-- Dedicated Play/Pause Video & Audio Toggle Button -->
+                  <button id="videoPlayPauseBtn" class="action-pill primary-pill" title="Play or Pause">
+                    <svg id="videoPlayPauseIcon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                      <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                    </svg>
+                    <span id="videoPlayPauseText">Pause</span>
+                  </button>
+
+                  <!-- Screen-off Audio Mode Toggle -->
+                  <button id="toggleAudioModeBtn" class="action-pill" title="Screen-off Audio Mode">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                      <path d="M12 1a9 9 0 0 0-9 9v7c0 1.66 1.34 3 3 3h3v-8H5v-2c0-3.87 3.13-7 7-7s7 3.13 7 7v2h-4v8h3c1.66 0 3-1.34 3-3v-7a9 9 0 0 0-9-9z"/>
+                    </svg>
+                    <span id="audioModeText">Audio Mode</span>
+                  </button>
+
+                  <button id="likeBtn" class="action-pill">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                      <path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/>
+                    </svg>
+                    <span id="watchLikes">Like</span>
+                  </button>
+
+                  <button id="shareBtn" class="action-pill">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                      <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/>
+                    </svg>
+                    <span>Share</span>
+                  </button>
+
+                  <button id="saveLibraryBtn" class="action-pill">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                      <path d="M14 10H2v2h12v-2zm0-4H2v2h12V6zm4 8v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM2 16h8v-2H2v2z"/>
+                    </svg>
+                    <span id="saveLibraryText">Save</span>
+                  </button>
+
+                  <!-- Download Button (Offline Storage) -->
+                  <button id="downloadBtn" class="action-pill download-pill" title="Download for Offline Play">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                      <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
+                    </svg>
+                    <span id="downloadBtnText">Download</span>
+                  </button>
+
+                  <button id="copyUrlBtn" class="action-pill">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                      <path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/>
+                    </svg>
+                    <span>Copy Link</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Description Box (Expandable) -->
+              <div id="descriptionBox" class="description-box">
+                <div id="descriptionText" class="description-text">Description...</div>
+                <button id="descToggleBtn" class="desc-more-btn">Show more</button>
+              </div>
+            </div>
           </div>
-          <button id="libraryManageBtn" class="btn-outline-xs">Account</button>
-        </div>
-      </div>
-      
-      <!-- Offline Downloads Section -->
-      <div class="library-section">
-        <div class="section-title-row">
-          <h3>⬇️ Offline Downloads (অফলাইন প্লেব্যাক)</h3>
-          <span id="offlineBadgeCount" class="badge-count">0 items</span>
-        </div>
-        <div id="downloadsList" class="library-list">
-          <p class="empty-text">No offline videos yet. Tap "Download" on any video to play without internet!</p>
-        </div>
-      </div>
 
-      <div class="library-section">
-        <h3>Saved Videos</h3>
-        <div id="savedVideosList" class="library-list">
-          <p class="empty-text">No saved videos yet. Tap "Save" on any video to bookmark it!</p>
-        </div>
-      </div>
+          <!-- Secondary (Right) Column: Recommendations -->
+          <div class="watch-secondary-col">
+            <div class="related-section">
+              <div class="section-heading">Up Next</div>
+              <div id="relatedVideos" class="related-list"></div>
+            </div>
+          </div>
 
-      <div class="library-section">
-        <h3>Recently Watched</h3>
-        <div id="historyVideosList" class="library-list">
-          <p class="empty-text">Your watch history will appear here.</p>
-        </div>
-      </div>
+        </div><!-- /.watch-content-layout -->
+      </div><!-- /#watchScroll -->
     </section>
 
     <!-- Settings Modal -->
     <div id="settingsModal" class="modal-overlay hidden">
-      <div class="modal-box">
+      <div class="modal-box settings-modal-box">
+        <div class="modal-drag-handle"></div>
         <div class="modal-header">
-          <h3>Settings</h3>
-          <button id="closeSettingsBtn" class="icon-btn">✕</button>
+          <div class="settings-header-title">
+            <h3>Settings</h3>
+            <span class="settings-header-sub">Preferences & Playback</span>
+          </div>
+          <button id="closeSettingsBtn" class="icon-btn" aria-label="Close Settings">✕</button>
         </div>
         
-        <div class="modal-content">
-          <div class="setting-group">
-            <label class="setting-title">Streaming Server (Invidious / Piped)</label>
-            <p class="setting-desc">Auto-failover is active. You can also pick a specific instance:</p>
-            <select id="instanceSelect" class="form-select"></select>
-            <button id="testInstanceBtn" class="btn-outline-sm">Test Server Speed</button>
-            <span id="instancePingResult" class="ping-status"></span>
-          </div>
+        <div class="modal-content settings-content">
+          <!-- Feed & Playback Section -->
+          <div class="settings-section">
+            <span class="settings-section-title">Feed & Playback</span>
+            <div class="settings-card">
+              <!-- Default Home Feed -->
+              <div class="settings-row">
+                <div class="settings-row-left">
+                  <div class="settings-icon-badge red-badge">🇧🇩</div>
+                  <div class="settings-row-text">
+                    <span class="settings-row-title">Default Home Feed</span>
+                    <span class="settings-row-desc">Feed loaded when opening app</span>
+                  </div>
+                </div>
+                <div class="settings-row-right">
+                  <select id="defaultTopicSelect" class="settings-select">
+                    <option value="bangla" selected>🇧🇩 Bangla</option>
+                    <option value="trending">🔥 Trending</option>
+                    <option value="music">🎵 Music</option>
+                    <option value="gaming">🎮 Gaming</option>
+                    <option value="news">📰 News</option>
+                    <option value="podcasts">🎙️ Podcasts</option>
+                    <option value="lofi">☕ Lo-Fi</option>
+                    <option value="tech">💻 Tech</option>
+                  </select>
+                </div>
+              </div>
 
-          <div class="setting-group">
-            <label class="setting-title">Default Video Quality</label>
-            <select id="defaultQualitySelect" class="form-select">
-              <option value="auto">Auto (Best for connection)</option>
-              <option value="1080p">1080p (FHD)</option>
-              <option value="720p" selected>720p (HD - Recommended for iPhone)</option>
-              <option value="480p">480p (Data Saver)</option>
-              <option value="audio">Audio Only (Battery & Screen-Off Saver)</option>
-            </select>
-          </div>
+              <!-- Video Quality -->
+              <div class="settings-row">
+                <div class="settings-row-left">
+                  <div class="settings-icon-badge blue-badge">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                      <path d="M19 4H5c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 11H9.5v-2h-2v2H6V9h1.5v2.5h2V9H11v6zm7-1c0 .55-.45 1-1 1h-4V9h4c.55 0 1 .45 1 1v5zm-1.5-3.5h-2v3h2v-3z"/>
+                    </svg>
+                  </div>
+                  <div class="settings-row-text">
+                    <span class="settings-row-title">Streaming Quality</span>
+                    <span class="settings-row-desc">Preferred video resolution</span>
+                  </div>
+                </div>
+                <div class="settings-row-right">
+                  <select id="defaultQualitySelect" class="settings-select">
+                    <option value="auto">Auto (Adaptive)</option>
+                    <option value="1080p">1080p (Full HD)</option>
+                    <option value="720p" selected>720p (HD Recommended)</option>
+                    <option value="480p">480p (Data Saver)</option>
+                    <option value="audio">Audio Only (Battery Saver)</option>
+                  </select>
+                </div>
+              </div>
 
-          <div class="setting-group">
-            <label class="setting-title">Autoplay Next Video</label>
-            <label class="switch">
-              <input type="checkbox" id="autoplayToggle" checked>
-              <span class="slider round"></span>
-            </label>
-          </div>
+              <!-- Screen-Off Background Play -->
+              <div class="settings-row">
+                <div class="settings-row-left">
+                  <div class="settings-icon-badge purple-badge">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                      <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                    </svg>
+                  </div>
+                  <div class="settings-row-text">
+                    <span class="settings-row-title">Screen-Off Playback</span>
+                    <span class="settings-row-desc">Keeps audio playing when locked</span>
+                  </div>
+                </div>
+                <div class="settings-row-right">
+                  <label class="switch">
+                    <input type="checkbox" id="backgroundAudioToggle" checked>
+                    <span class="slider"></span>
+                  </label>
+                </div>
+              </div>
 
-          <div class="setting-group">
-            <label class="setting-title">Screen-Off Background Play</label>
-            <p class="setting-desc">Automatically keep audio playing when screen locks or tab is hidden</p>
-            <label class="switch">
-              <input type="checkbox" id="backgroundAudioToggle" checked>
-              <span class="slider round"></span>
-            </label>
-          </div>
-
-          <div class="setting-group">
-            <label class="setting-title">Google OAuth 2.0 Client ID (Optional)</label>
-            <p class="setting-desc">For official Google One-Tap sign-in, add your Google Cloud Web Client ID:</p>
-            <div class="setting-input-row">
-              <input type="text" id="googleClientIdInput" class="setting-text-input" placeholder="e.g. 123456-xxx.apps.googleusercontent.com">
-              <button id="saveGoogleClientIdBtn" class="btn-primary-sm">Save</button>
+              <!-- Autoplay Next Video -->
+              <div class="settings-row">
+                <div class="settings-row-left">
+                  <div class="settings-icon-badge green-badge">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                      <path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/>
+                    </svg>
+                  </div>
+                  <div class="settings-row-text">
+                    <span class="settings-row-title">Autoplay Next</span>
+                    <span class="settings-row-desc">Play next video automatically</span>
+                  </div>
+                </div>
+                <div class="settings-row-right">
+                  <label class="switch">
+                    <input type="checkbox" id="autoplayToggle" checked>
+                    <span class="slider"></span>
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div class="setting-group">
-            <label class="setting-title">iPhone Installation Guide (PWA)</label>
-            <ol class="ios-guide-steps">
-              <li>Open this site in <strong>Safari</strong> on your iPhone.</li>
-              <li>Tap the <strong>Share</strong> button (box with upward arrow) at the bottom.</li>
-              <li>Scroll down and tap <strong>"Add to Home Screen"</strong> (হোম স্ক্রিনে যোগ করুন).</li>
-              <li>Tap <strong>"Add"</strong> at the top right.</li>
-              <li>Now open <strong>YouTube Max</strong> from your home screen for true full-screen, ad-free video & screen-off background play!</li>
-            </ol>
+          <!-- Account & Cloud Section -->
+          <div class="settings-section">
+            <span class="settings-section-title">Google Account & Cloud Sync</span>
+            <div class="settings-card settings-card-pad">
+              <p class="settings-card-note">Optionally provide your Google Cloud OAuth Client ID for native Google One-Tap sign-in:</p>
+              <div class="settings-input-group">
+                <input type="text" id="googleClientIdInput" class="settings-text-input" placeholder="e.g. 123456-xxx.apps.googleusercontent.com">
+                <button id="saveGoogleClientIdBtn" class="settings-save-btn">Save</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- iPhone Installation Guide Section -->
+          <div class="settings-section">
+            <span class="settings-section-title">iPhone Installation Guide</span>
+            <div class="settings-card">
+              <div class="ios-install-steps">
+                <div class="ios-step-item">
+                  <div class="ios-step-badge">1</div>
+                  <div class="ios-step-content">
+                    <span class="ios-step-title">Open in Safari</span>
+                    <span class="ios-step-desc">Open this site in Safari on your iPhone</span>
+                  </div>
+                </div>
+                <div class="ios-step-item">
+                  <div class="ios-step-badge">2</div>
+                  <div class="ios-step-content">
+                    <span class="ios-step-title">Tap Share Button</span>
+                    <span class="ios-step-desc">Tap the Share icon <span class="share-icon-pill">⎋</span> at bottom of Safari</span>
+                  </div>
+                </div>
+                <div class="ios-step-item">
+                  <div class="ios-step-badge">3</div>
+                  <div class="ios-step-content">
+                    <span class="ios-step-title">Add to Home Screen</span>
+                    <span class="ios-step-desc">Scroll down and tap <strong>"Add to Home Screen"</strong></span>
+                  </div>
+                </div>
+                <div class="ios-step-item">
+                  <div class="ios-step-badge">4</div>
+                  <div class="ios-step-content">
+                    <span class="ios-step-title">Full Screen & Screen-Off Play</span>
+                    <span class="ios-step-desc">Open from Home Screen for true ad-free background playback</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- System Info Section -->
+          <div class="settings-section">
+            <div class="settings-system-info">
+              <div class="system-badge">⚡ Ad-Free YouTube Max • v8.7</div>
+              <p>Multi-Layer Stream Engine • Offline IndexedDB • Screen-Off Audio</p>
+            </div>
           </div>
         </div>
       </div>
@@ -644,14 +896,17 @@
           <!-- Fallback Web Mirror Container (Visible if Vercel serverless IP gets restricted by YouTube) -->
           <div id="downloadFallbackBox" class="download-fallback-box hidden">
             <div class="fallback-alert">
-              <span>⚠️ Vercel server was restricted by YouTube. Use Instant Web Mirror below:</span>
+              <span>⚠️ Cloud server restricted. Use instant working mirrors below:</span>
             </div>
             <div class="fallback-links-row">
+              <a id="fallbackDirectBtn" href="#" class="fallback-btn direct-mirror">
+                ⚡ Direct Browser Download
+              </a>
               <a id="fallbackWebAudioBtn" href="#" target="_blank" rel="noopener noreferrer" class="fallback-btn audio-mirror">
-                🎵 Download Audio (Web Mirror)
+                🚀 Instant SaveFrom Mirror (MP4 / MP3)
               </a>
               <a id="fallbackWebVideoBtn" href="#" target="_blank" rel="noopener noreferrer" class="fallback-btn video-mirror">
-                🎬 Download Video (Web Mirror)
+                🎬 Fast Mirror 2 (YT1s)
               </a>
             </div>
           </div>
@@ -664,8 +919,8 @@
 
   </div>
 
-  <script src="/player.js?v=8.6"></script>
-  <script src="/app.js?v=8.6"></script>
+  <script src="/player.js?v=9.5"></script>
+  <script src="/app.js?v=9.5"></script>
   <script>
     // Register & Force Update PWA Service Worker
     if ('serviceWorker' in navigator) {

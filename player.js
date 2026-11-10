@@ -80,6 +80,23 @@ class YouTubePlayer {
       });
     }
 
+    // Desktop Watch Page Close & PiP Buttons
+    const closeWatchDesktopBtn = document.getElementById('closeWatchDesktopBtn');
+    if (closeWatchDesktopBtn) {
+      closeWatchDesktopBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.minimizePlayer();
+      });
+    }
+
+    const minimizeToPipBtn = document.getElementById('minimizeToPipBtn');
+    if (minimizeToPipBtn) {
+      minimizeToPipBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.minimizePlayer();
+      });
+    }
+
     // Dedicated Play/Pause button on watch page
     if (this.videoPlayPauseBtn) {
       this.videoPlayPauseBtn.addEventListener('click', (e) => {
