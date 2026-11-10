@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>YouTube</title>
+  
+  <!-- iOS PWA Meta Tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="YouTube">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+  
+  <!-- Standard Web Manifest -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#0f0f0f">
+  
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <!-- Safe Area Wrapper for iPhone Notch & Home Indicator -->
+  <div id="app">
+    
+    <!-- Top Header -->
+    <header id="header">
+      <div class="header-left">
+        <div class="yt-logo" id="logoBtn">
+          <svg viewBox="0 0 90 20" class="logo-svg">
+            <path d="M27.97 3.12A3.5 3.5 0 0 0 25.5.65C23.32.07 14.5 0 14.5 0S5.68.07 3.5.65A3.5 3.5 0 0 0 1.03 3.12C.45 5.3 0 9.87 0 9.87s.45 4.58 1.03 6.75a3.5 3.5 0 0 0 2.47 2.48c2.18.57 11 .57 11 .57s8.82 0 11-.57a3.5 3.5 0 0 0 2.47-2.48c.58-2.17 1.03-6.75 1.03-6.75s-.45-4.57-1.03-6.75z" fill="#FF0000"/>
+            <polygon points="11.5,14 18,10 11.5,6" fill="#FFFFFF"/>
+            <text x="32" y="15" fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="700" font-size="14.5" letter-spacing="-0.5">YouTube</text>
+          </svg>
+          <span class="badge-max">MAX</span>
+        </div>
+      </div>
+      
+      <div class="header-right">
+        <!-- Direct URL paste quick button -->
+        <button id="pasteUrlBtn" class="icon-btn" title="Paste YouTube Link" aria-label="Paste YouTube Link">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M16 1H4C2.9 1 2 1.9 2 3V17H4V3H16V1ZM19 5H8C6.9 5 6 5.9 6 7V21C6 22.1 6.9 23 8 23H19C20.1 23 21 22.1 21 21V7C21 5.9 20.1 5 19 5ZM19 21H8V7H19V21Z"/>
+          </svg>
+        </button>
+        <!-- Search icon -->
+        <button id="searchOpenBtn" class="icon-btn" title="Search" aria-label="Search">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+            <path d="M20.87 20.17l-5.59-5.59A7.95 7.95 0 0 0 17 10a8 8 0 1 0-8 8 7.95 7.95 0 0 0 4.58-1.72l5.59 5.59a.5.5 0 0 0 .7 0l1-1a.5.5 0 0 0 0-.7zM4 10a6 6 0 1 1 6 6 6 6 0 0 1-6-6z"/>
+          </svg>
+        </button>
+        <!-- Settings button -->
+        <button id="settingsBtn" class="icon-btn" title="Settings" aria-label="Settings">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+            <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84c-.24 0-.44.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Search Overlay Box -->
+    <div id="searchOverlay" class="search-overlay hidden">
+      <div class="search-bar-wrap">
+        <button id="searchBackBtn" class="icon-btn" aria-label="Back">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+          </svg>
+        </button>
+        <div class="search-input-box">
+          <input type="search" id="searchInput" placeholder="Search or paste YouTube URL..." autocomplete="off" autocorrect="off" autocapitalize="none">
+          <button id="searchClearBtn" class="icon-btn-sm hidden" aria-label="Clear">✕</button>
+        </div>
+        <button id="searchSubmitBtn" class="icon-btn" aria-label="Search">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M20.87 20.17l-5.59-5.59A7.95 7.95 0 0 0 17 10a8 8 0 1 0-8 8 7.95 7.95 0 0 0 4.58-1.72l5.59 5.59a.5.5 0 0 0 .7 0l1-1a.5.5 0 0 0 0-.7zM4 10a6 6 0 1 1 6 6 6 6 0 0 1-6-6z"/>
+          </svg>
+        </button>
+      </div>
+      <div id="searchSuggestions" class="search-suggestions"></div>
+    </div>
+
+    <!-- Category Chips -->
+    <nav id="categoryChips" class="category-chips">
+      <button class="chip active" data-topic="trending">🔥 Trending</button>
+      <button class="chip" data-topic="music">🎵 Music</button>
+      <button class="chip" data-topic="gaming">🎮 Gaming</button>
+      <button class="chip" data-topic="news">📰 News</button>
+      <button class="chip" data-topic="podcasts">🎙️ Podcasts</button>
+      <button class="chip" data-topic="bangla">🇧🇩 Bangla</button>
+      <button class="chip" data-topic="lofi">☕ Lo-Fi</button>
+      <button class="chip" data-topic="tech">💻 Tech</button>
+    </nav>
+
+    <!-- Main Scrollable Feed -->
+    <main id="mainFeed">
+      <!-- Loading Skeleton / Spinner -->
+      <div id="feedLoading" class="feed-loading">
+        <div class="spinner"></div>
+        <p>Loading ad-free videos...</p>
+      </div>
+
+      <!-- Feed Grid -->
+      <div id="videoGrid" class="video-grid"></div>
+
+      <!-- Error / Retry Box -->
+      <div id="feedError" class="feed-error hidden">
+        <p id="feedErrorMsg">Unable to load feed. Switching to backup server...</p>
+        <button id="retryBtn" class="btn-primary">Retry</button>
+      </div>
+    </main>
+
+    <!-- Bottom Navigation Bar (iOS Native Style) -->
+    <footer id="bottomNav">
+      <button class="nav-item active" id="navHome">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+          <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+        </svg>
+        <span>Home</span>
+      </button>
+      <button class="nav-item" id="navTrending">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+          <path d="M17.53 11.2c-.23-.3-.49-.57-.75-.82C15.93 9.4 15 8.1 15 6.5c0-.6.18-1.2.46-1.7-.56.12-1.12.35-1.63.72-2.14 1.5-2.83 4.2-1.7 6.48.06.12.1.25.1.38 0 .4-.3.7-.7.7-.3 0-.6-.2-.7-.5-.7-1.4-.7-3.1 0-4.5.1-.3 0-.6-.2-.8-.2-.2-.5-.3-.8-.2C6.7 8.3 5 11.4 5 15c0 3.9 3.1 7 7 7 4.1 0 7.4-3.3 7.4-7.4 0-1.2-.4-2.4-1.87-3.4zM12 20c-2.8 0-5-2.2-5-5 0-1.8 1-3.4 2.5-4.2-.2 1.3.1 2.7.9 3.8.7 1 1.8 1.6 3 1.6.4 0 .8-.1 1.2-.2C14.2 18.2 13.2 20 12 20z"/>
+        </svg>
+        <span>Trending</span>
+      </button>
+      <button class="nav-item" id="navLibrary">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+          <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 12.5v-9l6 4.5-6 4.5z"/>
+        </svg>
+        <span>Library</span>
+      </button>
+      <button class="nav-item" id="navSettings">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+          <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84c-.24 0-.44.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+        </svg>
+        <span>Settings</span>
+      </button>
+    </footer>
+
+    <!-- Mini Player Bar (shown when player is minimized while browsing) -->
+    <div id="miniPlayer" class="mini-player hidden">
+      <div class="mini-info" id="miniInfo">
+        <img id="miniThumbnail" src="" alt="Thumbnail" class="mini-thumb">
+        <div class="mini-meta">
+          <div id="miniTitle" class="mini-title">Video Title</div>
+          <div id="miniAuthor" class="mini-author">Channel</div>
+        </div>
+      </div>
+      <div class="mini-controls">
+        <button id="miniPlayBtn" class="icon-btn" aria-label="Play/Pause">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+            <path d="M8 5v14l11-7z"/>
+          </svg>
+        </button>
+        <button id="miniCloseBtn" class="icon-btn" aria-label="Close">✕</button>
+      </div>
+    </div>
+
+    <!-- Full Watch Page / Player Modal (iOS Full Height Sheet) -->
+    <section id="watchModal" class="watch-modal hidden">
+      
+      <!-- Player Top Bar (Back & Audio Mode) -->
+      <div class="watch-header-bar">
+        <button id="closeWatchBtn" class="icon-btn" aria-label="Minimize Player">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+            <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
+          </svg>
+        </button>
+        <span class="watch-header-title">Ad-Free Player</span>
+        <div class="watch-header-actions">
+          <button id="toggleAudioModeBtn" class="pill-btn" title="Screen-off Audio Mode">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <path d="M12 1a9 9 0 0 0-9 9v7c0 1.66 1.34 3 3 3h3v-8H5v-2c0-3.87 3.13-7 7-7s7 3.13 7 7v2h-4v8h3c1.66 0 3-1.34 3-3v-7a9 9 0 0 0-9-9z"/>
+            </svg>
+            <span id="audioModeText">Audio Mode</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Video Player Sticky Header Container -->
+      <div id="playerContainer" class="player-container">
+        
+        <!-- Clean YouTube Embed Iframe (youtube-nocookie with iOS playsinline) -->
+        <iframe 
+          id="playerIframe" 
+          class="player-iframe" 
+          src="" 
+          title="YouTube Player"
+          frameborder="0" 
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+          allowfullscreen
+        ></iframe>
+
+        <!-- Video Element for Native Direct Play / PiP -->
+        <video 
+          id="mainVideo" 
+          playsinline 
+          webkit-playsinline 
+          preload="metadata"
+          class="hidden"
+        ></video>
+
+        <!-- Pure Audio Element (for seamless Screen-off / Background Mode) -->
+        <audio 
+          id="mainAudio" 
+          preload="metadata"
+        ></audio>
+
+        <!-- Audio Mode Visualizer Screen (Active in Screen-Off / Audio Only Mode) -->
+        <div id="audioModeScreen" class="audio-mode-screen hidden">
+          <div class="vinyl-record">
+            <img id="audioModeThumb" src="" alt="Album Artwork" class="vinyl-art">
+          </div>
+          <div class="audio-badge">🎧 Audio Mode Active (Screen-Off Friendly)</div>
+        </div>
+      </div>
+
+      <!-- Watch Details & Related Feed -->
+      <div id="watchScroll" class="watch-scroll">
+        <!-- Title & Stats -->
+        <div class="watch-meta">
+          <h1 id="watchTitle" class="watch-title">Video Title</h1>
+          <div class="watch-submeta">
+            <span id="watchViews">0 views</span> • <span id="watchDate">Recently</span>
+          </div>
+
+          <!-- Quick Action Buttons -->
+          <div class="watch-actions-bar">
+            <button id="likeBtn" class="action-pill">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                <path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/>
+              </svg>
+              <span id="watchLikes">Like</span>
+            </button>
+
+            <button id="shareBtn" class="action-pill">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/>
+              </svg>
+              <span>Share</span>
+            </button>
+
+            <button id="saveLibraryBtn" class="action-pill">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                <path d="M14 10H2v2h12v-2zm0-4H2v2h12V6zm4 8v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM2 16h8v-2H2v2z"/>
+              </svg>
+              <span id="saveLibraryText">Save</span>
+            </button>
+
+            <button id="copyUrlBtn" class="action-pill">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                <path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/>
+              </svg>
+              <span>Copy Link</span>
+            </button>
+          </div>
+
+          <!-- Channel Box -->
+          <div class="channel-card">
+            <img id="channelAvatar" src="" alt="Avatar" class="channel-avatar">
+            <div class="channel-info">
+              <div id="channelName" class="channel-name">Channel Name</div>
+              <div id="channelSubs" class="channel-subs">0 subscribers</div>
+            </div>
+          </div>
+
+          <!-- Description Box (Expandable) -->
+          <div id="descriptionBox" class="description-box">
+            <div id="descriptionText" class="description-text">Description...</div>
+            <button id="descToggleBtn" class="desc-more-btn">Show more</button>
+          </div>
+        </div>
+
+        <!-- Related Videos Header & List -->
+        <div class="related-section">
+          <div class="section-heading">Up Next</div>
+          <div id="relatedVideos" class="related-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Library Screen (Saved Bookmarks & History) -->
+    <section id="libraryScreen" class="sub-screen hidden">
+      <div class="screen-header">
+        <h2>Your Library</h2>
+        <button id="clearHistoryBtn" class="btn-text">Clear History</button>
+      </div>
+      
+      <div class="library-section">
+        <h3>Saved Videos</h3>
+        <div id="savedVideosList" class="library-list">
+          <p class="empty-text">No saved videos yet. Tap "Save" on any video to bookmark it!</p>
+        </div>
+      </div>
+
+      <div class="library-section">
+        <h3>Recently Watched</h3>
+        <div id="historyVideosList" class="library-list">
+          <p class="empty-text">Your watch history will appear here.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal-overlay hidden">
+      <div class="modal-box">
+        <div class="modal-header">
+          <h3>Settings</h3>
+          <button id="closeSettingsBtn" class="icon-btn">✕</button>
+        </div>
+        
+        <div class="modal-content">
+          <div class="setting-group">
+            <label class="setting-title">Streaming Server (Invidious / Piped)</label>
+            <p class="setting-desc">Auto-failover is active. You can also pick a specific instance:</p>
+            <select id="instanceSelect" class="form-select"></select>
+            <button id="testInstanceBtn" class="btn-outline-sm">Test Server Speed</button>
+            <span id="instancePingResult" class="ping-status"></span>
+          </div>
+
+          <div class="setting-group">
+            <label class="setting-title">Default Video Quality</label>
+            <select id="defaultQualitySelect" class="form-select">
+              <option value="auto">Auto (Best for connection)</option>
+              <option value="1080p">1080p (FHD)</option>
+              <option value="720p" selected>720p (HD - Recommended for iPhone)</option>
+              <option value="480p">480p (Data Saver)</option>
+              <option value="audio">Audio Only (Battery & Screen-Off Saver)</option>
+            </select>
+          </div>
+
+          <div class="setting-group">
+            <label class="setting-title">Autoplay Next Video</label>
+            <label class="switch">
+              <input type="checkbox" id="autoplayToggle" checked>
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <div class="setting-group">
+            <label class="setting-title">iPhone Installation Guide (PWA)</label>
+            <ol class="ios-guide-steps">
+              <li>Open this site in <strong>Safari</strong> on your iPhone.</li>
+              <li>Tap the <strong>Share</strong> button (box with upward arrow) at the bottom.</li>
+              <li>Scroll down and tap <strong>"Add to Home Screen"</strong> (হোম স্ক্রিনে যোগ করুন).</li>
+              <li>Tap <strong>"Add"</strong> at the top right.</li>
+              <li>Now open <strong>YouTube Max</strong> from your home screen for true full-screen, ad-free video & screen-off background play!</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast hidden">Message</div>
+
+  </div>
+
+  <script src="/player.js"></script>
+  <script src="/app.js"></script>
+  <script>
+    // Register PWA Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch((err) => {
+          console.log('SW registration error:', err);
+        });
+      });
+    }
+  </script>
+</body>
+</html>
+
