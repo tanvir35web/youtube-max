@@ -77,6 +77,24 @@ class App {
   initPlayer() {
     this.player = new YouTubePlayer();
     this.player.onNextTrackCallback = () => this.playNextRelatedVideo();
+
+    // "Autoplay Next Video" setting (on by default, remembered across launches)
+    this.autoplayToggle = document.getElementById('autoplayToggle');
+    let autoplayNext = true;
+    try {
+      autoplayNext = localStorage.getItem('ytmax_autoplay') !== 'off';
+    } catch (e) {}
+    this.autoplayToggle.checked = autoplayNext;
+    this.autoplayToggle.addEventListener('change', () => {
+      try {
+        localStorage.setItem('ytmax_autoplay', this.autoplayToggle.checked ? 'on' : 'off');
+      } catch (e) {}
+    });
+
+    // When a video finishes, play the first "Up Next" video if autoplay is on
+    this.player.onVideoEnded = () => {
+      if (this.autoplayToggle.checked) this.playNextRelatedVideo();
+    };
   }
 
   initEvents() {
