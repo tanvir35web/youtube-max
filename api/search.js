@@ -1,7 +1,7 @@
 const https = require('https');
 
 function searchYouTube(query) {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const postData = JSON.stringify({
       context: {
         client: {
@@ -20,7 +20,8 @@ function searchYouTube(query) {
         'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(postData),
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
-      }
+      },
+      timeout: 8000
     }, (res) => {
       let data = '';
       res.on('data', chunk => data += chunk);
@@ -58,12 +59,17 @@ function searchYouTube(query) {
           }
           resolve(videos);
         } catch (e) {
-          reject(e);
+          resolve([]);
         }
       });
     });
 
-    req.on('error', reject);
+    req.on('timeout', () => {
+      req.destroy();
+      resolve([]);
+    });
+
+    req.on('error', () => resolve([]));
     req.write(postData);
     req.end();
   });
@@ -76,17 +82,38 @@ module.exports = async (req, res) => {
   res.setHeader('Content-Type', 'application/json');
 
   if (req.method === 'OPTIONS') {
-    res.status(204).end();
+    res.writeHead ? res.writeHead(204) : (res.status ? res.status(204).end() : res.end());
     return;
   }
 
-  const query = req.query.q || 'trending';
+  let query = 'trending';
+  if (req.query && req.query.q) {
+    query = req.query.q;
+  } else {
+    try {
+      const parsed = new URL(req.url, `http://${req.headers?.host || 'localhost'}`);
+      if (parsed.searchParams.get('q')) query = parsed.searchParams.get('q');
+    } catch (e) {}
+  }
 
   try {
     const videos = await searchYouTube(query);
-    res.status(200).json(videos);
+    if (res.status) {
+      res.status(200).json(videos);
+    } else if (res.writeHead) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(videos));
+    } else {
+      res.end(JSON.stringify(videos));
+    }
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    if (res.status) {
+      res.status(500).json({ error: err.message });
+    } else if (res.writeHead) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    } else {
+      res.end(JSON.stringify({ error: err.message }));
+    }
   }
 };
-

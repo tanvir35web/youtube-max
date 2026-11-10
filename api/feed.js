@@ -20,7 +20,8 @@ function searchYouTube(query) {
         'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(postData),
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
-      }
+      },
+      timeout: 8000
     }, (res) => {
       let data = '';
       res.on('data', chunk => data += chunk);
@@ -63,6 +64,11 @@ function searchYouTube(query) {
       });
     });
 
+    req.on('timeout', () => {
+      req.destroy();
+      resolve([]);
+    });
+
     req.on('error', () => resolve([]));
     req.write(postData);
     req.end();
@@ -76,11 +82,20 @@ module.exports = async (req, res) => {
   res.setHeader('Content-Type', 'application/json');
 
   if (req.method === 'OPTIONS') {
-    res.status(204).end();
+    res.writeHead ? res.writeHead(204) : (res.status ? res.status(204).end() : res.end());
     return;
   }
 
-  const topic = req.query.topic || 'trending';
+  let topic = 'trending';
+  if (req.query && req.query.topic) {
+    topic = req.query.topic;
+  } else {
+    try {
+      const parsed = new URL(req.url, `http://${req.headers?.host || 'localhost'}`);
+      if (parsed.searchParams.get('topic')) topic = parsed.searchParams.get('topic');
+    } catch (e) {}
+  }
+
   const topicQueries = {
     trending: 'trending videos today',
     music: 'trending music songs 2026',
@@ -95,8 +110,22 @@ module.exports = async (req, res) => {
 
   try {
     const list1 = await searchYouTube(query);
-    res.status(200).json(list1);
+    if (res.status) {
+      res.status(200).json(list1);
+    } else if (res.writeHead) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(list1));
+    } else {
+      res.end(JSON.stringify(list1));
+    }
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    if (res.status) {
+      res.status(500).json({ error: err.message });
+    } else if (res.writeHead) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    } else {
+      res.end(JSON.stringify({ error: err.message }));
+    }
   }
 };

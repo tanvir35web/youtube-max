@@ -1,10 +1,10 @@
-const CACHE_NAME = 'yt-max-v8-5';
+const CACHE_NAME = 'yt-max-v8-6';
 const APP_SHELL_FILES = [
   '/',
   '/index.html',
-  '/style.css?v=8.5',
-  '/app.js?v=8.4',
-  '/player.js?v=8.4',
+  '/style.css?v=8.6',
+  '/app.js?v=8.6',
+  '/player.js?v=8.6',
   '/manifest.json',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
@@ -42,10 +42,9 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Pass-through for video/audio streaming and local file downloads
+  // Pass-through for all API endpoints, video/audio streaming and local file downloads
   if (
-    url.pathname.startsWith('/api/stream') ||
-    url.pathname.startsWith('/api/download') ||
+    url.pathname.startsWith('/api/') ||
     url.hostname.includes('googlevideo') ||
     url.hostname.includes('youtube') ||
     event.request.destination === 'video' ||

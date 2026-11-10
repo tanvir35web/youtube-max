@@ -1166,7 +1166,6 @@ class App {
       window.showToast('Server restricted: Use Web Mirror button to download');
     }
   }
-  }
 
   async renderOfflineDownloads() {
     if (!this.downloadsList) return;
