@@ -1,4 +1,4 @@
-const CACHE_NAME = 'yt-max-cache-v1';
+const CACHE_NAME = 'yt-max-cache-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -45,10 +45,11 @@ self.addEventListener('fetch', (event) => {
     url.hostname.includes('invidious') ||
     url.hostname.includes('piped') ||
     url.hostname.includes('googlevideo') ||
+    url.hostname.includes('youtube') ||
     event.request.destination === 'video' ||
     event.request.destination === 'audio'
   ) {
-    return; // Pass through to network
+    return; // Pass through to network directly
   }
 
   // Cache-first with network fallback for local static assets

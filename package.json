@@ -1,0 +1,12 @@
+{
+  "name": "youtube-max",
+  "version": "1.0.0",
+  "description": "Clean, Ad-Free YouTube PWA for iPhone with Background Play",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": ["pwa", "youtube", "iphone", "adblock"],
+  "author": "",
+  "license": "MIT"
+}
