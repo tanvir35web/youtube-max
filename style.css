@@ -1153,6 +1153,66 @@ html, body {
   font-weight: 600;
 }
 
+/* Round close button used by every bottom sheet / dialog */
+.sheet-close-btn {
+  position: relative;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  margin-left: 12px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.09);
+  color: #e8e8e8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.12s ease;
+}
+
+/* Larger invisible tap target (44px) without making the circle bigger */
+.sheet-close-btn::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+}
+
+.sheet-close-btn svg {
+  display: block;
+  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.sheet-close-btn:active {
+  transform: scale(0.9);
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.sheet-close-btn:focus-visible {
+  outline: 2px solid #3ea6ff;
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .sheet-close-btn:hover {
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.5);
+    color: #fff;
+  }
+
+  .sheet-close-btn:hover svg {
+    transform: rotate(90deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet-close-btn,
+  .sheet-close-btn svg {
+    transition: none;
+  }
+}
+
 /* Settings Modal Specific */
 .settings-modal-box {
   max-height: 90vh;
