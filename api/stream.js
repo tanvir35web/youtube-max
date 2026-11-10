@@ -223,6 +223,9 @@ function getInvidiousMedia(videoId, type = 'audio') {
  * Resolve media stream via @distube/ytdl-core or fallbacks
  */
 async function resolveMedia(videoId, type = 'audio') {
+  // ytdl result kept aside when it is unusable for <video> playback (see below)
+  let ytdlWithoutLength = null;
+
   // 1. First try @distube/ytdl-core
   try {
     const info = await getCachedInfo(videoId);
@@ -255,7 +258,7 @@ async function resolveMedia(videoId, type = 'audio') {
       const media = yt.open(info, format);
       const mimeType = format.mimeType ? format.mimeType.split(';')[0].trim() : (type === 'video' ? 'video/mp4' : 'audio/mp4');
       const contentLength = format.contentLength ? parseInt(format.contentLength, 10) : undefined;
-      return {
+      const result = {
         media,
         format,
         mimeType,
@@ -267,6 +270,14 @@ async function resolveMedia(videoId, type = 'audio') {
         extension,
         type
       };
+      // Muxed video formats often come without a size. Without it we cannot send a valid
+      // Content-Range, and browsers refuse to play/seek the stream in <video> (needed for PiP).
+      // Prefer a direct URL fallback (which forwards real ranges) and keep this as a last resort.
+      if (type === 'video' && !contentLength) {
+        ytdlWithoutLength = result;
+      } else {
+        return result;
+      }
     }
   } catch (err) {
     console.warn(`ytdl-core resolve warning for ${videoId}:`, err.message);
@@ -290,6 +301,10 @@ async function resolveMedia(videoId, type = 'audio') {
     }
   } catch (invErr) {
     console.warn('Invidious fallback warning:', invErr.message);
+  }
+
+  if (ytdlWithoutLength) {
+    return ytdlWithoutLength;
   }
 
   throw new Error(`Unable to resolve media stream for ${videoId}. The video may be restricted or blocked.`);
@@ -389,12 +404,16 @@ async function handleStream(req, res) {
       const total = contentLength || undefined;
       const actualEnd = end !== undefined ? end : (total ? total - 1 : undefined);
 
-      rangeOpt = { start, end: actualEnd };
-      statusCode = 206;
-
-      headers['Content-Range'] = `bytes ${start}-${actualEnd !== undefined ? actualEnd : ''}/${total !== undefined ? total : '*'}`;
-      if (actualEnd !== undefined) {
-        headers['Content-Length'] = String(actualEnd - start + 1);
+      if (actualEnd === undefined && start === 0) {
+        // Size unknown and the whole file was asked for: plain 200 ('bytes 0-/*' is not a valid range header)
+        rangeOpt = {};
+      } else {
+        rangeOpt = { start, end: actualEnd };
+        statusCode = 206;
+        headers['Content-Range'] = `bytes ${start}-${actualEnd !== undefined ? actualEnd : ''}/${total !== undefined ? total : '*'}`;
+        if (actualEnd !== undefined) {
+          headers['Content-Length'] = String(actualEnd - start + 1);
+        }
       }
     } else if (contentLength) {
       headers['Content-Length'] = String(contentLength);
@@ -530,12 +549,16 @@ async function handleDownload(req, res) {
       const total = contentLength || undefined;
       const actualEnd = end !== undefined ? end : (total ? total - 1 : undefined);
 
-      rangeOpt = { start, end: actualEnd };
-      statusCode = 206;
-
-      headers['Content-Range'] = `bytes ${start}-${actualEnd !== undefined ? actualEnd : ''}/${total !== undefined ? total : '*'}`;
-      if (actualEnd !== undefined) {
-        headers['Content-Length'] = String(actualEnd - start + 1);
+      if (actualEnd === undefined && start === 0) {
+        // Size unknown and the whole file was asked for: plain 200 ('bytes 0-/*' is not a valid range header)
+        rangeOpt = {};
+      } else {
+        rangeOpt = { start, end: actualEnd };
+        statusCode = 206;
+        headers['Content-Range'] = `bytes ${start}-${actualEnd !== undefined ? actualEnd : ''}/${total !== undefined ? total : '*'}`;
+        if (actualEnd !== undefined) {
+          headers['Content-Length'] = String(actualEnd - start + 1);
+        }
       }
     } else if (contentLength) {
       headers['Content-Length'] = String(contentLength);

@@ -61,14 +61,228 @@ class YouTubePlayer {
     this.unmuteCheckTimer = null;
     this._currentBlobUrl = null;
 
+    // Picture-in-Picture: the YouTube iframe is cross-origin and cannot enter PiP,
+    // so PiP plays the same video through our own <video> element (muxed MP4 stream).
+    this.pipBtn = document.getElementById('pipBtn');
+    this.pipBtnText = document.getElementById('pipBtnText');
+    this.nativeStreamActive = false;
+    this.autoSwitchedFromNative = false;
+
     this.onNextTrackCallback = null;
     this.onVideoEnded = null;
 
     this.initEvents();
     this.initAudioEvents();
     this.initNativeVideoEvents();
+    this.initPictureInPicture();
     this.initEmbedBridge();
     this.initMediaSession();
+  }
+
+  /* ------------------------------------------------------------------------
+     Picture-in-Picture
+     ------------------------------------------------------------------------ */
+  initPictureInPicture() {
+    const v = this.mainVideo;
+    this.pipSupported = !!v && (
+      (document.pictureInPictureEnabled && typeof v.requestPictureInPicture === 'function') ||
+      (typeof v.webkitSupportsPresentationMode === 'function' &&
+        v.webkitSupportsPresentationMode('picture-in-picture'))
+    );
+
+    if (this.pipBtn) {
+      if (!this.pipSupported) this.pipBtn.classList.add('hidden');
+      this.pipBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.togglePictureInPicture();
+      });
+    }
+
+    if (!v) return;
+    v.addEventListener('enterpictureinpicture', () => this.onPipChange(true));
+    v.addEventListener('leavepictureinpicture', () => this.onPipChange(false));
+    v.addEventListener('webkitpresentationmodechanged', () => {
+      this.onPipChange(v.webkitPresentationMode === 'picture-in-picture');
+    });
+
+    // Keep position / lock-screen scrubber in sync while the native element plays
+    v.addEventListener('timeupdate', () => {
+      if (v.classList.contains('hidden')) return;
+      this.currentPosition = v.currentTime || 0;
+      if (v.duration && isFinite(v.duration)) {
+        this.videoDuration = v.duration;
+        this.updateMediaSessionPosition(v.currentTime, v.duration);
+      }
+    });
+
+    v.addEventListener('error', () => {
+      if (this.nativeStreamActive && !this._pipRequestPending) {
+        window.showToast('Video stream failed. Switching back to the normal player.');
+        this.activateVideoMode(this.currentPosition);
+      }
+    });
+  }
+
+  isInPictureInPicture() {
+    const v = this.mainVideo;
+    return !!v && (document.pictureInPictureElement === v || v.webkitPresentationMode === 'picture-in-picture');
+  }
+
+  isNativeVideoVisible() {
+    const v = this.mainVideo;
+    return !!v && !v.classList.contains('hidden') && !!v.getAttribute('src');
+  }
+
+  getCurrentTime() {
+    if (this.isAudioMode || this.wasAutoSwitched) return (this.audioEl && this.audioEl.currentTime) || this.currentPosition;
+    if (this.isNativeVideoVisible()) return this.mainVideo.currentTime || this.currentPosition;
+    return this.currentPosition;
+  }
+
+  onPipChange(active) {
+    this.isPipActive = active;
+    if (this.pipBtn) this.pipBtn.classList.toggle('active', active);
+    if (this.pipBtnText) this.pipBtnText.textContent = active ? 'Exit PiP' : 'PiP';
+    if (this.playerContainer) this.playerContainer.classList.toggle('pip-active', active);
+  }
+
+  waitForMetadata(timeoutMs = 15000) {
+    const v = this.mainVideo;
+    if (v.readyState >= 1) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const done = (fn, arg) => {
+        clearTimeout(timer);
+        v.removeEventListener('loadedmetadata', onMeta);
+        v.removeEventListener('error', onErr);
+        fn(arg);
+      };
+      const onMeta = () => done(resolve);
+      const onErr = () => done(reject, new Error('Video stream failed to load'));
+      const timer = setTimeout(() => done(reject, new Error('Video stream timed out')), timeoutMs);
+      v.addEventListener('loadedmetadata', onMeta);
+      v.addEventListener('error', onErr);
+    });
+  }
+
+  requestPictureInPicture() {
+    const v = this.mainVideo;
+    if (document.pictureInPictureEnabled && typeof v.requestPictureInPicture === 'function') {
+      return v.requestPictureInPicture();
+    }
+    if (typeof v.webkitSetPresentationMode === 'function') {
+      v.webkitSetPresentationMode('picture-in-picture');
+      return Promise.resolve();
+    }
+    return Promise.reject(new Error('Picture-in-Picture is not supported'));
+  }
+
+  async exitPictureInPicture() {
+    const v = this.mainVideo;
+    try {
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture();
+      } else if (v && typeof v.webkitSetPresentationMode === 'function') {
+        v.webkitSetPresentationMode('inline');
+      }
+    } catch (e) {
+      console.warn('Exit PiP failed:', e);
+    }
+  }
+
+  async togglePictureInPicture() {
+    if (!this.currentVideoData || !this.mainVideo) return;
+    if (!this.pipSupported) {
+      window.showToast('Picture-in-Picture is not supported on this browser');
+      return;
+    }
+    if (this.isInPictureInPicture()) {
+      await this.exitPictureInPicture();
+      return;
+    }
+
+    // Offline video already plays in the native element; otherwise switch to the stream
+    if (!this.isNativeVideoVisible()) {
+      this.activateNativeStream(this.getCurrentTime());
+    }
+
+    const firstTry = this.mainVideo.readyState >= 1;
+    this._pipRequestPending = true;
+    try {
+      // Requesting synchronously keeps the user-gesture; only wait if the stream has no metadata yet
+      if (!firstTry) {
+        window.showToast('Preparing Picture-in-Picture...');
+        await this.waitForMetadata();
+      }
+      await this.requestPictureInPicture();
+    } catch (err) {
+      console.warn('PiP request failed:', err);
+      if (this.mainVideo.error || /failed|timed out/i.test(err.message || '')) {
+        window.showToast('Could not load the video stream for PiP');
+        this.activateVideoMode(this.currentPosition);
+      } else {
+        // Most often the browser dropped the user gesture while the stream loaded
+        window.showToast('Video ready. Tap PiP again to pop it out.');
+      }
+    } finally {
+      this._pipRequestPending = false;
+    }
+  }
+
+  /**
+   * Play the current video through the native <video> element (needed for PiP).
+   * The iframe keeps its src (paused + hidden) so switching back is instant.
+   */
+  activateNativeStream(startPos = 0) {
+    const v = this.mainVideo;
+    if (!v || !this.currentVideoData) return;
+
+    this.isAudioMode = false;
+    this.wasAutoSwitched = false;
+    this.nativeStreamActive = true;
+
+    this.sendCommand('pauseVideo');
+    this.iframe.classList.add('hidden');
+    if (this.audioEl) this.audioEl.pause();
+    this.audioModeScreen.classList.add('hidden');
+    if (this.playerContainer) this.playerContainer.classList.remove('audio-active');
+    if (this.audioModeBtn) this.audioModeBtn.classList.remove('active');
+    if (this.audioModeText) this.audioModeText.textContent = 'Audio Mode';
+
+    const src = `/api/stream?id=${encodeURIComponent(this.currentVideoData.videoId)}&type=video`;
+    if (v.getAttribute('src') !== src) {
+      v.src = src;
+    }
+    if (this.currentVideoData.thumbnail) v.poster = this.currentVideoData.thumbnail;
+    v.controls = true;
+    v.classList.remove('hidden');
+
+    if (startPos > 0) {
+      if (v.readyState >= 1) {
+        try { v.currentTime = startPos; } catch (e) {}
+      } else {
+        v.addEventListener('loadedmetadata', () => {
+          try { v.currentTime = startPos; } catch (e) {}
+        }, { once: true });
+      }
+    }
+
+    v.play().catch((err) => console.warn('Native video play error:', err));
+    this.updatePlayStateUI(true);
+    this.updateMediaSessionMetadata();
+  }
+
+  // Stop the native stream (not offline blobs, those are managed by playOfflineMedia)
+  stopNativeStream() {
+    const v = this.mainVideo;
+    if (!v) return;
+    v.pause();
+    v.classList.add('hidden');
+    if (this.nativeStreamActive) {
+      v.removeAttribute('src');
+      v.removeAttribute('poster');
+      try { v.load(); } catch (e) {}
+    }
+    this.nativeStreamActive = false;
   }
 
   initEvents() {
@@ -248,6 +462,8 @@ class YouTubePlayer {
     });
 
     this.mainVideo.addEventListener('pause', () => {
+      // Paused on purpose for the background audio handoff: playback continues in audio
+      if (this.wasAutoSwitched) return;
       if (!this.mainVideo.classList.contains('hidden')) {
         this.isPlaying = false;
         this.updatePlayStateUI(false);
@@ -312,13 +528,19 @@ class YouTubePlayer {
     } catch (e) {}
 
     if (document.hidden) {
+      // The floating PiP window must keep playing the video itself
+      if (this.isInPictureInPicture()) return;
+
       // Screen was turned off / locked / app backgrounded
       if (this.isPlaying && !this.isAudioMode && backgroundEnabled && this.currentVideoData) {
+        const fromNative = this.isNativeVideoVisible();
+        const resumePos = fromNative ? (this.mainVideo.currentTime || 0) : (this.currentPosition || 0);
         this.wasAutoSwitched = true;
-        const resumePos = this.currentPosition || 0;
+        this.autoSwitchedFromNative = fromNative;
 
-        // Pause iframe
-        this.sendCommand('pauseVideo');
+        // Pause the visible video source
+        if (fromNative) this.mainVideo.pause();
+        else this.sendCommand('pauseVideo');
 
         // Hand off to native audio element
         const streamUrl = `/api/stream?id=${encodeURIComponent(this.currentVideoData.videoId)}&type=audio`;
@@ -355,10 +577,19 @@ class YouTubePlayer {
       if (this.wasAutoSwitched) {
         const syncedPos = this.audioEl.currentTime || this.currentPosition;
         this.wasAutoSwitched = false;
-
-        // Sync iframe back to audio position
         this.currentPosition = syncedPos;
         this.audioEl.pause();
+
+        if (this.autoSwitchedFromNative && this.isNativeVideoVisible()) {
+          // Resume the native video (PiP stream / offline file) where audio left off
+          this.autoSwitchedFromNative = false;
+          try { this.mainVideo.currentTime = syncedPos; } catch (e) {}
+          this.mainVideo.play().catch(() => {});
+          return;
+        }
+        this.autoSwitchedFromNative = false;
+
+        // Sync iframe back to audio position
         this.sendCommand('seekTo', [syncedPos, true]);
         this.sendCommand('unMute');
         this.sendCommand('playVideo');
@@ -388,6 +619,10 @@ class YouTubePlayer {
         return;
       }
       if (!data || typeof data !== 'object') return;
+
+      // While the native <video> (PiP stream / offline file) is playing, the hidden iframe is
+      // paused on purpose; its state/time reports must not override the real player state
+      if (this.isNativeVideoVisible()) return;
 
       if (data.event === 'onReady') {
         this.onEmbedReady();
@@ -479,12 +714,12 @@ class YouTubePlayer {
 
       navigator.mediaSession.setActionHandler('seekbackward', (details) => {
         const step = details.seekOffset || 10;
-        this.seekTo(Math.max(0, (this.audioEl.currentTime || this.currentPosition) - step));
+        this.seekTo(Math.max(0, this.getCurrentTime() - step));
       });
 
       navigator.mediaSession.setActionHandler('seekforward', (details) => {
         const step = details.seekOffset || 10;
-        this.seekTo((this.audioEl.currentTime || this.currentPosition) + step);
+        this.seekTo(this.getCurrentTime() + step);
       });
 
       navigator.mediaSession.setActionHandler('previoustrack', () => {
@@ -553,6 +788,13 @@ class YouTubePlayer {
       this.audioModeThumb.src = videoData.thumbnail;
     }
 
+    // Already floating in PiP (e.g. autoplay next): keep the PiP window and swap the stream
+    if (this.isInPictureInPicture()) {
+      this.activateNativeStream(0);
+      this.updatePlayStateUI(true);
+      return;
+    }
+
     if (preferAudio || this.isAudioMode) {
       this.activateAudioMode(0);
     } else {
@@ -569,10 +811,8 @@ class YouTubePlayer {
     // Stop iframe and any local video element
     this.sendCommand('pauseVideo');
     this.iframe.classList.add('hidden');
-    if (this.mainVideo) {
-      this.mainVideo.pause();
-      this.mainVideo.classList.add('hidden');
-    }
+    if (this.isInPictureInPicture()) this.exitPictureInPicture();
+    this.stopNativeStream();
 
     this.audioModeScreen.classList.remove('hidden');
     if (this.playerContainer) this.playerContainer.classList.add('audio-active');
@@ -625,10 +865,8 @@ class YouTubePlayer {
     if (this.audioEl) {
       this.audioEl.pause();
     }
-    if (this.mainVideo) {
-      this.mainVideo.pause();
-      this.mainVideo.classList.add('hidden');
-    }
+    if (this.isInPictureInPicture()) this.exitPictureInPicture();
+    this.stopNativeStream();
 
     this.audioModeScreen.classList.add('hidden');
     this.iframe.classList.remove('hidden');
@@ -691,6 +929,8 @@ class YouTubePlayer {
       if (this.playerContainer) this.playerContainer.classList.remove('audio-active');
 
       if (this.mainVideo) {
+        this.nativeStreamActive = false; // blob, not the network stream
+        this.mainVideo.removeAttribute('poster');
         this.mainVideo.src = blobUrl;
         this.mainVideo.classList.remove('hidden');
         this.mainVideo.controls = true;
@@ -753,12 +993,11 @@ class YouTubePlayer {
   play() {
     this.isPlaying = true;
 
-    // Check offline native video
-    if (this.mainVideo && !this.mainVideo.classList.contains('hidden') && this.mainVideo.src) {
+    // Native <video> (offline file or PiP stream): play it and leave the hidden iframe alone,
+    // otherwise both would play at once
+    if (this.isNativeVideoVisible() && !this.wasAutoSwitched) {
       this.mainVideo.play().catch(() => {});
-    }
-
-    if (this.isAudioMode || this.wasAutoSwitched) {
+    } else if (this.isAudioMode || this.wasAutoSwitched) {
       if (this.audioEl) {
         this.audioEl.muted = false;
         this.audioEl.play().catch((err) => console.warn('Audio play error:', err));
