@@ -1002,47 +1002,86 @@ class App {
     return (match && match[2].length === 11) ? match[2] : null;
   }
 
+  // Placeholder cards shaped like real video cards, shown while a feed/search loads
+  renderFeedSkeleton(count = 8) {
+    const card = `
+      <div class="video-card skeleton-card" aria-hidden="true">
+        <div class="thumb-container skeleton"></div>
+        <div class="video-card-meta">
+          <div class="channel-avatar-sm skeleton"></div>
+          <div class="video-text-meta">
+            <div class="skeleton skeleton-line w-90"></div>
+            <div class="skeleton skeleton-line w-60"></div>
+            <div class="skeleton skeleton-line skeleton-line-sm w-40"></div>
+          </div>
+        </div>
+      </div>`;
+    this.grid.innerHTML = card.repeat(count);
+    this.grid.setAttribute('aria-busy', 'true');
+  }
+
+  renderRelatedSkeleton(count = 6) {
+    const card = `
+      <div class="related-card skeleton-card" aria-hidden="true">
+        <div class="related-thumb skeleton"></div>
+        <div class="related-meta">
+          <div class="skeleton skeleton-line w-90"></div>
+          <div class="skeleton skeleton-line w-70"></div>
+          <div class="skeleton skeleton-line skeleton-line-sm w-50"></div>
+        </div>
+      </div>`;
+    this.relatedVideos.innerHTML = card.repeat(count);
+  }
+
   async loadFeed(topic) {
-    this.feedLoading.classList.remove('hidden');
+    // Ignore responses from older requests (fast chip/tab switching)
+    const requestId = this.feedRequestId = (this.feedRequestId || 0) + 1;
+    this.feedLoading.classList.add('hidden');
     this.feedError.classList.add('hidden');
-    this.grid.innerHTML = '';
+    this.renderFeedSkeleton();
 
     try {
       const res = await fetch(`/api/feed?topic=${encodeURIComponent(topic)}`);
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const videos = await res.json();
-      
-      this.feedLoading.classList.add('hidden');
+      if (requestId !== this.feedRequestId) return;
+
       this.renderVideoGrid(videos);
     } catch (err) {
+      if (requestId !== this.feedRequestId) return;
       console.warn('Feed load error:', err);
-      this.feedLoading.classList.add('hidden');
+      this.grid.innerHTML = '';
+      this.grid.removeAttribute('aria-busy');
       this.feedError.classList.remove('hidden');
       this.feedErrorMsg.textContent = 'Server busy. Tap retry to reload feed.';
     }
   }
 
   async loadSearch(query) {
-    this.feedLoading.classList.remove('hidden');
+    const requestId = this.feedRequestId = (this.feedRequestId || 0) + 1;
+    this.feedLoading.classList.add('hidden');
     this.feedError.classList.add('hidden');
-    this.grid.innerHTML = '';
+    this.renderFeedSkeleton();
 
     try {
       const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const videos = await res.json();
+      if (requestId !== this.feedRequestId) return;
 
-      this.feedLoading.classList.add('hidden');
       this.renderVideoGrid(videos);
     } catch (err) {
+      if (requestId !== this.feedRequestId) return;
       console.warn('Search error:', err);
-      this.feedLoading.classList.add('hidden');
+      this.grid.innerHTML = '';
+      this.grid.removeAttribute('aria-busy');
       this.feedError.classList.remove('hidden');
       this.feedErrorMsg.textContent = 'Search failed. Tap retry.';
     }
   }
 
   renderVideoGrid(videos) {
+    this.grid.removeAttribute('aria-busy');
     if (!videos || !videos.length) {
       this.grid.innerHTML = '<div class="feed-error"><p>No videos found</p></div>';
       return;
@@ -1126,14 +1165,17 @@ class App {
   }
 
   async loadRelatedVideos(query) {
-    this.relatedVideos.innerHTML = '<div class="feed-loading"><div class="spinner"></div></div>';
+    const requestId = this.relatedRequestId = (this.relatedRequestId || 0) + 1;
+    this.renderRelatedSkeleton();
     try {
       const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
       if (!res.ok) throw new Error('Search failed');
       const list = await res.json();
+      if (requestId !== this.relatedRequestId) return;
       this.currentRelatedVideos = list.filter(v => v.videoId !== this.player.currentVideoData?.videoId);
       this.renderRelatedVideos(this.currentRelatedVideos);
     } catch (e) {
+      if (requestId !== this.relatedRequestId) return;
       this.relatedVideos.innerHTML = '<p class="empty-text">No recommendations available</p>';
     }
   }
