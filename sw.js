@@ -1,4 +1,4 @@
-const CACHE_NAME = 'yt-max-cache-v2';
+const CACHE_NAME = 'yt-max-cache-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

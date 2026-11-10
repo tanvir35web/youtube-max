@@ -1,23 +1,21 @@
 /* ==========================================================================
    YouTube Max - iPhone Optimized PWA Stylesheet
+   Pixel-Perfect iOS Full Height & Notch Integration
    ========================================================================== */
 
 :root {
   --bg-color: #0f0f0f;
   --card-bg: #1e1e1e;
-  --card-hover: #272727;
   --text-main: #f1f1f1;
   --text-sub: #aaaaaa;
   --yt-red: #ff0000;
-  --yt-red-dark: #cc0000;
   --chip-bg: #272727;
   --chip-active-bg: #ffffff;
   --chip-active-text: #0f0f0f;
-  --border-color: rgba(255, 255, 255, 0.1);
-  --nav-bg: rgba(15, 15, 15, 0.92);
-  --overlay-bg: rgba(0, 0, 0, 0.75);
-  
-  /* Safe Area Insets for iPhone X, 11, 12, 13, 14, 15, 16 Pro Dynamic Island & Home Bar */
+  --border-color: rgba(255, 255, 255, 0.08);
+  --nav-bg: rgba(15, 15, 15, 0.96);
+
+  /* iOS Safe Area Insets */
   --sat: env(safe-area-inset-top, 0px);
   --sar: env(safe-area-inset-right, 0px);
   --sab: env(safe-area-inset-bottom, 0px);
@@ -41,41 +39,42 @@ input, textarea {
 html, body {
   width: 100%;
   height: 100%;
-  height: 100dvh; /* Dynamic Viewport Height for iOS Safari */
+  height: 100dvh;
+  margin: 0;
+  padding: 0;
   background-color: var(--bg-color);
   color: var(--text-main);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, sans-serif;
   overflow: hidden;
+  position: fixed; /* Prevents rubber-banding bounce on iPhone */
   touch-action: manipulation;
 }
 
 #app {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
+  width: 100vw;
   height: 100%;
   height: 100dvh;
+  display: flex;
+  flex-direction: column;
   position: relative;
   overflow: hidden;
-  padding-top: var(--sat);
-  padding-left: var(--sal);
-  padding-right: var(--sar);
-  padding-bottom: calc(56px + var(--sab)); /* Bottom Nav space */
+  background-color: var(--bg-color);
 }
 
 /* --------------------------------------------------------------------------
-   Header
+   Header (Sits Flush Under iPhone Dynamic Island / Notch)
    -------------------------------------------------------------------------- */
 #header {
-  height: 48px;
-  min-height: 48px;
+  height: calc(44px + var(--sat));
+  padding-top: var(--sat);
+  padding-left: 14px;
+  padding-right: 14px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 14px;
   background-color: var(--bg-color);
-  border-bottom: 1px solid var(--border-color);
-  z-index: 10;
+  flex-shrink: 0;
+  z-index: 20;
 }
 
 .header-left {
@@ -98,7 +97,7 @@ html, body {
 .badge-max {
   background: linear-gradient(135deg, #ff0000, #ff5722);
   color: #fff;
-  font-size: 9px;
+  font-size: 8.5px;
   font-weight: 800;
   padding: 2px 5px;
   border-radius: 4px;
@@ -123,11 +122,156 @@ html, body {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 0.15s ease;
 }
 
 .icon-btn:active {
   background: rgba(255, 255, 255, 0.15);
+}
+
+/* --------------------------------------------------------------------------
+   Category Chips (Horizontal Scrollable Pills)
+   -------------------------------------------------------------------------- */
+.category-chips {
+  height: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  overflow-x: auto;
+  white-space: nowrap;
+  scrollbar-width: none;
+  background: var(--bg-color);
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+  z-index: 15;
+}
+
+.category-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.chip {
+  background: var(--chip-bg);
+  color: var(--text-main);
+  border: none;
+  border-radius: 8px;
+  padding: 6px 13px;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.chip.active {
+  background: var(--chip-active-bg);
+  color: var(--chip-active-text);
+  font-weight: 600;
+}
+
+/* --------------------------------------------------------------------------
+   Main Feed & Full-Width Edge-to-Edge Video Cards
+   -------------------------------------------------------------------------- */
+#mainFeed {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding: 0;
+  padding-bottom: calc(56px + var(--sab)); /* Leaves room for bottom nav */
+}
+
+.video-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.video-card {
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  background: transparent;
+  width: 100%;
+}
+
+.video-card:active {
+  opacity: 0.85;
+}
+
+.thumb-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #181818;
+  overflow: hidden;
+}
+
+.thumb-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.duration-badge {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.82);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 5px;
+  border-radius: 4px;
+}
+
+.video-card-meta {
+  display: flex;
+  gap: 12px;
+  padding: 10px 14px 2px;
+}
+
+.channel-avatar-sm {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #333;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.video-text-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.video-card-title {
+  font-size: 14.5px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--text-main);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: 3px;
+}
+
+.video-card-sub {
+  font-size: 12px;
+  color: var(--text-sub);
+  line-height: 1.3;
+}
+
+.feed-loading, .feed-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  gap: 12px;
+  color: var(--text-sub);
+  font-size: 14px;
 }
 
 /* --------------------------------------------------------------------------
@@ -140,7 +284,7 @@ html, body {
   width: 100%;
   height: 100%;
   background: var(--bg-color);
-  z-index: 50;
+  z-index: 90;
   padding-top: var(--sat);
   display: flex;
   flex-direction: column;
@@ -193,169 +337,15 @@ html, body {
   padding: 10px 0;
 }
 
-.suggestion-item {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 12px 18px;
-  font-size: 15px;
-  cursor: pointer;
-}
-
-.suggestion-item:active {
-  background: rgba(255, 255, 255, 0.08);
-}
-
 /* --------------------------------------------------------------------------
-   Category Chips
-   -------------------------------------------------------------------------- */
-.category-chips {
-  height: 44px;
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 12px;
-  overflow-x: auto;
-  white-space: nowrap;
-  scrollbar-width: none;
-  background: var(--bg-color);
-}
-
-.category-chips::-webkit-scrollbar {
-  display: none;
-}
-
-.chip {
-  background: var(--chip-bg);
-  color: var(--text-main);
-  border: none;
-  border-radius: 8px;
-  padding: 6px 14px;
-  font-size: 13.5px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.chip.active {
-  background: var(--chip-active-bg);
-  color: var(--chip-active-text);
-  font-weight: 600;
-}
-
-/* --------------------------------------------------------------------------
-   Main Feed & Video Cards
-   -------------------------------------------------------------------------- */
-#mainFeed {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  padding: 8px 0;
-}
-
-.video-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.video-card {
-  display: flex;
-  flex-direction: column;
-  cursor: pointer;
-  background: transparent;
-}
-
-.video-card:active {
-  opacity: 0.85;
-}
-
-.thumb-container {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  background: #181818;
-  overflow: hidden;
-}
-
-.thumb-container img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.duration-badge {
-  position: absolute;
-  bottom: 8px;
-  right: 8px;
-  background: rgba(0, 0, 0, 0.82);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 2px 5px;
-  border-radius: 4px;
-}
-
-.video-card-meta {
-  display: flex;
-  gap: 12px;
-  padding: 10px 12px 6px;
-}
-
-.channel-avatar-sm {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: #333;
-  object-fit: cover;
-  flex-shrink: 0;
-}
-
-.video-text-meta {
-  flex: 1;
-  min-width: 0;
-}
-
-.video-card-title {
-  font-size: 14.5px;
-  font-weight: 500;
-  line-height: 1.35;
-  color: var(--text-main);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  margin-bottom: 3px;
-}
-
-.video-card-sub {
-  font-size: 12px;
-  color: var(--text-sub);
-  line-height: 1.3;
-}
-
-.feed-loading, .feed-error {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 20px;
-  gap: 12px;
-  color: var(--text-sub);
-  font-size: 14px;
-}
-
-/* --------------------------------------------------------------------------
-   Bottom Navigation (iOS Native Floating Blur Bar)
+   Bottom Navigation (Docks Flush at iPhone Screen Bottom)
    -------------------------------------------------------------------------- */
 #bottomNav {
-  position: absolute;
+  position: fixed;
   bottom: 0;
   left: 0;
-  width: 100%;
-  height: calc(56px + var(--sab));
+  width: 100vw;
+  height: calc(48px + var(--sab));
   padding-bottom: var(--sab);
   background: var(--nav-bg);
   -webkit-backdrop-filter: blur(20px);
@@ -364,7 +354,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-around;
-  z-index: 20;
+  z-index: 50;
 }
 
 .nav-item {
@@ -378,7 +368,7 @@ html, body {
   font-size: 10px;
   font-weight: 500;
   cursor: pointer;
-  padding: 6px 12px;
+  padding: 4px 14px;
   transition: color 0.15s ease;
 }
 
@@ -388,21 +378,23 @@ html, body {
 }
 
 /* --------------------------------------------------------------------------
-   Mini Player Bar (When minimized while browsing)
+   Mini Player (Modern iOS Floating Bar)
    -------------------------------------------------------------------------- */
 .mini-player {
-  position: absolute;
-  bottom: calc(56px + var(--sab));
-  left: 0;
-  width: 100%;
-  height: 54px;
+  position: fixed;
+  bottom: calc(52px + var(--sab));
+  left: 8px;
+  right: 8px;
+  height: 52px;
   background: #212121;
-  border-top: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 10px;
-  z-index: 15;
+  padding: 0 8px;
+  z-index: 45;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .mini-info {
@@ -415,11 +407,12 @@ html, body {
 }
 
 .mini-thumb {
-  width: 65px;
-  height: 38px;
-  border-radius: 4px;
+  width: 58px;
+  height: 36px;
+  border-radius: 6px;
   object-fit: cover;
   background: #111;
+  flex-shrink: 0;
 }
 
 .mini-meta {
@@ -428,7 +421,7 @@ html, body {
 }
 
 .mini-title {
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 500;
   color: #fff;
   white-space: nowrap;
@@ -444,24 +437,25 @@ html, body {
 .mini-controls {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 /* --------------------------------------------------------------------------
-   Full Watch Modal / Sheet (iOS Full Height Experience)
+   Watch Modal (TRUE 100% Full-Screen & Full-Height Experience)
    -------------------------------------------------------------------------- */
 .watch-modal {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
+  width: 100vw;
   height: 100%;
-  background: var(--bg-color);
-  z-index: 30;
+  height: 100dvh;
+  background: #0f0f0f;
+  z-index: 100;
   display: flex;
   flex-direction: column;
-  padding-top: var(--sat);
-  transition: transform 0.28s cubic-bezier(0.1, 0.9, 0.2, 1);
+  overflow: hidden;
+  transition: transform 0.28s cubic-bezier(0.15, 0.85, 0.35, 1);
 }
 
 .watch-modal.hidden {
@@ -469,35 +463,16 @@ html, body {
   pointer-events: none;
 }
 
-.watch-header-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  background: var(--bg-color);
-  border-bottom: 1px solid var(--border-color);
-  z-index: 10;
-}
-
-.watch-header-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-main);
-}
-
-.watch-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
+/* Video Player Header Container (Hugs Notch/Dynamic Island Seamlessly) */
 .player-container {
   position: relative;
-  width: 100%;
+  width: 100vw;
   aspect-ratio: 16 / 9;
   background: #000;
-  overflow: hidden;
+  padding-top: var(--sat);
+  box-sizing: content-box;
   flex-shrink: 0;
+  z-index: 10;
 }
 
 .player-iframe {
@@ -505,13 +480,31 @@ html, body {
   height: 100%;
   border: none;
   background: #000;
+  display: block;
 }
 
-#mainVideo {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  background: #000;
+/* Floating Minimize Arrow Over the Video */
+.floating-back-btn {
+  position: absolute;
+  top: calc(8px + var(--sat));
+  left: 8px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  border: none;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 20;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.floating-back-btn:active {
+  background: rgba(255, 255, 255, 0.25);
 }
 
 /* Audio-Only Visualizer Screen */
@@ -521,18 +514,18 @@ html, body {
   left: 0;
   width: 100%;
   height: 100%;
-  background: radial-gradient(circle, #252525 0%, #0d0d0d 100%);
+  background: radial-gradient(circle, #222 0%, #0d0d0d 100%);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 12px;
-  z-index: 2;
+  z-index: 15;
 }
 
 .vinyl-record {
-  width: 120px;
-  height: 120px;
+  width: 110px;
+  height: 110px;
   border-radius: 50%;
   background: #111;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.8), 0 0 0 6px #1a1a1a;
@@ -548,11 +541,11 @@ html, body {
 }
 
 .vinyl-art {
-  width: 60px;
-  height: 60px;
+  width: 54px;
+  height: 54px;
   border-radius: 50%;
   object-fit: cover;
-  border: 3px solid #ff0000;
+  border: 2px solid #ff0000;
 }
 
 .audio-badge {
@@ -564,162 +557,13 @@ html, body {
   font-weight: 500;
 }
 
-/* Player Overlay Controls */
-.player-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: var(--overlay-bg);
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 8px 12px;
-  z-index: 5;
-  transition: opacity 0.25s ease;
-}
-
-.player-overlay.fade-out {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.overlay-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.top-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.pill-btn {
-  background: rgba(255, 255, 255, 0.2);
-  color: #fff;
-  border: none;
-  border-radius: 14px;
-  padding: 4px 10px;
-  font-size: 12px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  cursor: pointer;
-}
-
-.pill-btn.active {
-  background: var(--yt-red);
-}
-
-.overlay-center {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 36px;
-}
-
-.ctrl-btn {
-  background: none;
-  border: none;
-  color: #fff;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  cursor: pointer;
-}
-
-.ctrl-sub {
-  font-size: 9px;
-  font-weight: bold;
-}
-
-.ctrl-btn-large {
-  background: rgba(0, 0, 0, 0.45);
-  border: none;
-  color: #fff;
-  width: 62px;
-  height: 62px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: transform 0.15s ease;
-}
-
-.ctrl-btn-large:active {
-  transform: scale(0.92);
-}
-
-.overlay-bottom {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.scrubber-wrap {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 11px;
-  color: #ddd;
-}
-
-.custom-slider {
-  flex: 1;
-  -webkit-appearance: none;
-  appearance: none;
-  height: 3px;
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 2px;
-  outline: none;
-}
-
-.custom-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--yt-red);
-  cursor: pointer;
-}
-
-.player-buffering {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 6;
-}
-
-/* Spinner */
-.spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid rgba(255, 255, 255, 0.2);
-  border-top-color: var(--yt-red);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* --------------------------------------------------------------------------
-   Watch Details & Related Videos Scroll Area
-   -------------------------------------------------------------------------- */
+/* Watch Content Scroll Area */
 .watch-scroll {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  padding: 12px 14px 40px;
+  padding: 14px 14px calc(24px + var(--sab));
 }
 
 .watch-title {
@@ -779,8 +623,8 @@ html, body {
 }
 
 .channel-avatar {
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   object-fit: cover;
   background: #333;
@@ -852,7 +696,6 @@ html, body {
   border-radius: 6px;
   object-fit: cover;
   background: #222;
-  position: relative;
   flex-shrink: 0;
 }
 
@@ -883,7 +726,7 @@ html, body {
 .sub-screen {
   flex: 1;
   overflow-y: auto;
-  padding: 14px;
+  padding: calc(14px + var(--sat)) 14px calc(56px + var(--sab));
 }
 
 .screen-header {
@@ -907,7 +750,7 @@ html, body {
 }
 
 .library-section h3 {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text-sub);
   margin-bottom: 10px;
   text-transform: uppercase;
@@ -927,18 +770,19 @@ html, body {
 }
 
 /* --------------------------------------------------------------------------
-   Settings Modal & iOS Guide
+   Settings Modal
    -------------------------------------------------------------------------- */
 .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
+  width: 100vw;
   height: 100%;
+  height: 100dvh;
   background: rgba(0, 0, 0, 0.7);
   display: flex;
   align-items: flex-end;
-  z-index: 100;
+  z-index: 120;
 }
 
 .modal-box {
@@ -982,35 +826,6 @@ html, body {
   margin-bottom: 8px;
 }
 
-.form-select {
-  width: 100%;
-  height: 40px;
-  background: #2a2a2a;
-  border: 1px solid #444;
-  color: #fff;
-  border-radius: 8px;
-  padding: 0 10px;
-  font-size: 14px;
-  outline: none;
-}
-
-.btn-outline-sm {
-  margin-top: 8px;
-  background: none;
-  border: 1px solid #555;
-  color: #fff;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.ping-status {
-  margin-left: 10px;
-  font-size: 12px;
-  color: #4caf50;
-}
-
 .ios-guide-steps {
   padding-left: 20px;
   font-size: 13px;
@@ -1022,53 +837,10 @@ html, body {
   margin-bottom: 6px;
 }
 
-/* iOS Toggle Switch */
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 48px;
-  height: 28px;
-}
-
-.switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background-color: #444;
-  transition: .3s;
-  border-radius: 28px;
-}
-
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 22px;
-  width: 22px;
-  left: 3px;
-  bottom: 3px;
-  background-color: white;
-  transition: .3s;
-  border-radius: 50%;
-}
-
-input:checked + .slider {
-  background-color: #34c759;
-}
-
-input:checked + .slider:before {
-  transform: translateX(20px);
-}
-
 /* Toast Message */
 .toast {
   position: fixed;
-  bottom: calc(70px + var(--sab));
+  bottom: calc(65px + var(--sab));
   left: 50%;
   transform: translateX(-50%);
   background: rgba(40, 40, 40, 0.95);
@@ -1083,7 +855,19 @@ input:checked + .slider:before {
   transition: opacity 0.2s ease;
 }
 
-/* Utility classes */
+.spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  border-top-color: var(--yt-red);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 .hidden {
   display: none !important;
 }
@@ -1098,4 +882,3 @@ input:checked + .slider:before {
   font-weight: 600;
   cursor: pointer;
 }
-
